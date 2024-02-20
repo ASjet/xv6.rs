@@ -1,6 +1,9 @@
 [build]
 target = "x86_64-xv6.json"
 
+[target.'cfg(target_os = "xv6")']
+runner = "bootimage runner"
+
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
 build-std = ["core", "compiler_builtins"]
