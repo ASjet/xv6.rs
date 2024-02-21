@@ -53,6 +53,10 @@ impl ColorCode {
         ColorCode((background as u8) << 4 | foreground as u8)
     }
 
+    pub const fn empty() -> ColorCode {
+        ColorCode(0)
+    }
+
     pub fn foreground(&self) -> Color {
         Color::from(self.0)
     }
