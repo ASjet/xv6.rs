@@ -42,6 +42,15 @@ pub struct Writer {
 
 #[allow(dead_code)]
 impl Writer {
+    /// Creates a new `Writer` with the specified `color`.
+    ///
+    /// # Arguments
+    ///
+    /// * `color` - The color code to set for the writer.
+    ///
+    /// # Returns
+    ///
+    /// A new `Writer` instance.
     pub fn new(color: ColorCode) -> Writer {
         Writer {
             row_pos: 0,
@@ -51,15 +60,36 @@ impl Writer {
         }
     }
 
+    /// Sets the color code for the writer.
+    ///
+    /// # Arguments
+    ///
+    /// * `color` - The color code to set.
     pub fn set_color(&mut self, color: ColorCode) {
         self.color = color;
     }
 
+    /// Sets the position of the writer to the specified `row` and `col`.
+    ///
+    /// # Arguments
+    ///
+    /// * `row` - The row position to set.
+    /// * `col` - The column position to set.
+    ///
+    /// # Notes
+    ///
+    /// The `row` must be less than `BUFFER_HEIGHT`.
+    /// The `col` must be less than `BUFFER_WIDTH`.
     pub fn set_pos(&mut self, row: usize, col: usize) {
         self.row_pos = row % BUFFER_HEIGHT;
         self.col_pos = col % BUFFER_WIDTH;
     }
 
+    /// Writes a single byte to the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `byte` - The byte to write.
     pub fn write_byte(&mut self, byte: u8) {
         match byte {
             b'\n' => self.newline(),
@@ -68,18 +98,24 @@ impl Writer {
                     self.newline();
                 }
 
-                self.buf.chars[self.row_pos][self.col_pos] = Char::new(byte, self.color);
+                self.buf.chars[self.row_pos][self.col_pos].write(Char::new(byte, self.color));
                 self.col_pos += 1;
             }
         }
     }
 
+    /// Writes a string to the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - The string to write.
     pub fn write_str(&mut self, s: &str) {
         s.bytes()
             .map(convert_unprintable)
             .for_each(|b| self.write_byte(b));
     }
 
+    /// Moves the writer to the next line.
     pub fn newline(&mut self) {
         self.row_pos = if self.row_pos < BUFFER_HEIGHT - 1 {
             self.row_pos.wrapping_add(1)
@@ -101,7 +137,7 @@ impl Writer {
             self.row_pos -= count;
         }
         for row in BUFFER_HEIGHT - count..BUFFER_HEIGHT {
-            self.buf.chars[row] = EMPTY_BUFFER[0];
+            self.buf.chars[row].copy_from_slice(EMPTY_BUFFER[0]);
         }
     }
 
