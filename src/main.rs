@@ -16,7 +16,7 @@ pub extern "C" fn _start() -> ! {
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
     let color = vga::ColorCode::new(vga::Color::LightCyan, vga::Color::Black);
-    let mut vga_writer = vga::buffer::Writer::new(color);
+    let mut vga_writer = vga::Writer::new(color);
     vga_writer.write_str("Hello, World!");
 
     loop {}

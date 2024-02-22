@@ -1,4 +1,5 @@
-pub mod buffer;
-
 mod color;
+mod buffer;
+
 pub use color::*;
+pub use buffer::*;
