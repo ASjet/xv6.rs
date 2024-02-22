@@ -1,13 +1,24 @@
 use core::fmt;
+use core::cmp::max;
 use volatile::Volatile;
+use spin::Mutex;
+use lazy_static::lazy_static;
 
-use super::color::ColorCode;
+use super::color::{Color, ColorCode};
 
 pub const BUFFER_WIDTH: usize = 80;
 pub const BUFFER_HEIGHT: usize = 25;
 pub const INVALID_CHAR: u8 = 0xfe;
 
 const BUFFER_ADDR: isize = 0xb8000;
+
+type Register = u64;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(ColorCode::new(
+        Color::White, Color::Black
+    )));
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -16,8 +27,9 @@ struct Char {
     color: ColorCode,
 }
 
+#[allow(dead_code)]
 impl Char {
-    pub fn new(character: u8, color: ColorCode) -> Char {
+    pub const fn new(character: u8, color: ColorCode) -> Char {
         Char { character, color }
     }
 
@@ -30,9 +42,37 @@ impl Char {
 }
 
 #[repr(transparent)]
-struct Buffer {
-    chars: [[Volatile<Char>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+struct BufferLine([Volatile<Char>; BUFFER_WIDTH]);
+
+impl BufferLine {
+    pub fn write_line(&mut self, line: &BufferLine) {
+        let dst = self.to_register_mut();
+        line.to_register().iter().enumerate()
+            .for_each(|(i, reg)| dst[i].write(reg.read()));
+    }
+
+
+    pub fn write_char(&mut self, index: usize, ch: Char) {
+        self.0[index].write(ch);
+    }
+
+    pub fn clear(&mut self) {
+        for reg in to_register_mut(&mut self.0) {
+            // FIXME: Should the color be kept?
+            reg.write(0);
+        }
+    }
+
+    fn to_register(&self) -> &[Volatile<Register>] {
+        to_register(&self.0)
+    }
+
+    fn to_register_mut(&mut self) -> &mut [Volatile<Register>] {
+        to_register_mut(&mut self.0)
+    }
 }
+
+type Buffer = [BufferLine; BUFFER_HEIGHT];
 
 pub struct Writer {
     row_pos: usize,
@@ -99,7 +139,7 @@ impl Writer {
                     self.newline();
                 }
 
-                self.buf.chars[self.row_pos][self.col_pos].write(Char::new(byte, self.color));
+                self.buf[self.row_pos].write_char(self.col_pos, Char::new(byte, self.color));
                 self.col_pos += 1;
             }
         }
@@ -125,6 +165,11 @@ impl Writer {
             self.row_pos
         };
         self.col_pos = 0;
+        // FIXME: Should the line here get cleared?
+    }
+
+    pub fn clear(&mut self) {
+        self.buf.iter_mut().for_each(BufferLine::clear);
     }
 
     fn scroll(&mut self, count: usize) {
@@ -137,27 +182,27 @@ impl Writer {
             }
             self.row_pos -= count;
         }
-        for row in BUFFER_HEIGHT - count..BUFFER_HEIGHT {
-            self.clear_line(row);
-        }
+
+        self.buf[BUFFER_HEIGHT - count..BUFFER_HEIGHT]
+            .iter_mut().for_each(BufferLine::clear);
     }
 
-    fn copy_line(&mut self, src: usize, dest: usize) {
-        for col in 0..BUFFER_WIDTH {
-            self.buf.chars[dest][col].write(self.buf.chars[src][col].read());
+    fn copy_line(&mut self, src: usize, dst: usize) -> bool {
+        if src == dst || src >= BUFFER_HEIGHT || dst >= BUFFER_HEIGHT {
+            return false;
         }
-    }
 
-    fn clear(&mut self) {
-        for row in 0..BUFFER_HEIGHT {
-            self.clear_line(row);
-        }
-    }
+        let (left, right) = self.buf.split_at_mut(max(src, dst));
 
-    fn clear_line(&mut self, row: usize) {
-        for col in 0..BUFFER_WIDTH {
-            self.buf.chars[row][col].write(Char::empty());
-        }
+        let (src_line, dst_line) = if src > dst {
+            (&right[0], &mut left[dst])
+        } else {
+            (&left[src], &mut right[0])
+        };
+
+        dst_line.write_line(src_line);
+
+        true
     }
 }
 
@@ -173,4 +218,14 @@ fn convert_unprintable(byte: u8) -> u8 {
         0x20..=0x7e | b'\n' => byte,
         _ => INVALID_CHAR,
     }
+}
+
+// Convert a slice of T to a slice of register words to get higher read performance
+fn to_register<T>(arr: &[T]) -> &[Volatile<Register>] {
+    unsafe { &*((arr as *const [T]) as *const [Volatile<Register>]) }
+}
+
+// Convert a slice of T to a slice of register words to get higher write performance
+fn to_register_mut<T>(arr: &mut [T]) -> &mut [Volatile<Register>] {
+    unsafe { &mut *((arr as *mut [T]) as *mut [Volatile<Register>]) }
 }

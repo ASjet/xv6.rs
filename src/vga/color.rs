@@ -60,7 +60,7 @@ impl ColorCode {
     /// # Returns
     ///
     /// A new `ColorCode` instance.
-    pub fn new(foreground: Color, background: Color) -> ColorCode {
+    pub const fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | foreground as u8)
     }
 

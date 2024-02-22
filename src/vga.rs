@@ -35,6 +35,8 @@
 
 mod color;
 mod buffer;
+mod print;
 
 pub use color::*;
 pub use buffer::*;
+pub use print::*;
