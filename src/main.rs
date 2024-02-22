@@ -5,9 +5,13 @@ use core::panic::PanicInfo;
 
 mod vga;
 
+const PANIC_INFO_COLOR: vga::ColorCode = vga::ColorCode::new(vga::Color::LightRed, vga::Color::Black);
+
 /// This function is called on panic.
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    vga::WRITER.lock().set_color(PANIC_INFO_COLOR);
+    println!("{}", info);
     loop {}
 }
 
@@ -17,5 +21,5 @@ pub extern "C" fn _start() -> ! {
     // named `_start` by default
     println!("Hello, World!\ninteger: {}, float: {}", 42, 3.14);
 
-    loop {}
+    panic!("Some panic message");
 }

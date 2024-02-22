@@ -29,7 +29,7 @@ struct Char {
 
 #[allow(dead_code)]
 impl Char {
-    pub fn new(character: u8, color: ColorCode) -> Char {
+    pub const fn new(character: u8, color: ColorCode) -> Char {
         Char { character, color }
     }
 
