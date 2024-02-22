@@ -1,8 +1,8 @@
 use super::color::ColorCode;
 
 const BUFFER_ADDR: isize = 0xb8000;
-const BUFFER_WIDTH: usize = 80;
-const BUFFER_HEIGHT: usize = 25;
+pub const BUFFER_WIDTH: usize = 80;
+pub const BUFFER_HEIGHT: usize = 25;
 const EMPTY_BUFFER: [[Char; BUFFER_WIDTH]; BUFFER_HEIGHT] =
     [[Char::empty(); BUFFER_WIDTH]; BUFFER_HEIGHT];
 
