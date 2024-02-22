@@ -1,3 +1,4 @@
+use core::fmt;
 use volatile::Volatile;
 
 use super::color::ColorCode;
@@ -157,6 +158,13 @@ impl Writer {
         for col in 0..BUFFER_WIDTH {
             self.buf.chars[row][col].write(Char::empty());
         }
+    }
+}
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_str(s);
+        Ok(())
     }
 }
 

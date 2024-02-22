@@ -2,6 +2,7 @@
 #![no_main] // disable all Rust-level entry points
 
 use core::panic::PanicInfo;
+use core::fmt::Write;
 
 mod vga;
 
@@ -17,7 +18,7 @@ pub extern "C" fn _start() -> ! {
     // named `_start` by default
     let color = vga::ColorCode::new(vga::Color::LightCyan, vga::Color::Black);
     let mut vga_writer = vga::Writer::new(color);
-    vga_writer.write_str("Hello, World!");
+    write!(vga_writer, "Hello, World!\nfloat: {}, integer: {}", 3.14, 42).unwrap();
 
     loop {}
 }
