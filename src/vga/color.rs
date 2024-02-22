@@ -44,23 +44,49 @@ impl From<u8> for Color {
     }
 }
 
+/// Represents a color code that combines a foreground and background color.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ColorCode(u8);
 
 impl ColorCode {
+    /// Creates a new `ColorCode` with the specified foreground and background colors.
+    ///
+    /// # Arguments
+    ///
+    /// * `foreground` - The foreground color.
+    /// * `background` - The background color.
+    ///
+    /// # Returns
+    ///
+    /// A new `ColorCode` instance.
     pub fn new(foreground: Color, background: Color) -> ColorCode {
         ColorCode((background as u8) << 4 | foreground as u8)
     }
 
+    /// Returns an empty `ColorCode`.
+    ///
+    /// # Returns
+    ///
+    /// An empty `ColorCode` instance.
     pub const fn empty() -> ColorCode {
         ColorCode(0)
     }
 
+    /// Returns the foreground color of the `ColorCode`.
+    ///
+    /// # Returns
+    ///
+    /// The foreground color.
     pub fn foreground(&self) -> Color {
         Color::from(self.0)
     }
 
+    /// Returns the background color of the `ColorCode`.
+    ///
+    /// # Returns
+    ///
+    /// The background color.
     pub fn background(&self) -> Color {
         Color::from(self.0)
     }
