@@ -1,8 +1,10 @@
 use core::fmt;
 use core::cmp::max;
 use volatile::Volatile;
+use spin::Mutex;
+use lazy_static::lazy_static;
 
-use super::color::ColorCode;
+use super::color::{Color, ColorCode};
 
 pub const BUFFER_WIDTH: usize = 80;
 pub const BUFFER_HEIGHT: usize = 25;
@@ -11,6 +13,12 @@ pub const INVALID_CHAR: u8 = 0xfe;
 const BUFFER_ADDR: isize = 0xb8000;
 
 type Register = u64;
+
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(ColorCode::new(
+        Color::White, Color::Black
+    )));
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -43,12 +51,14 @@ impl BufferLine {
             .for_each(|(i, reg)| dst[i].write(reg.read()));
     }
 
+
     pub fn write_char(&mut self, index: usize, ch: Char) {
         self.0[index].write(ch);
     }
 
     pub fn clear(&mut self) {
         for reg in to_register_mut(&mut self.0) {
+            // FIXME: Should the color be kept?
             reg.write(0);
         }
     }
@@ -155,6 +165,7 @@ impl Writer {
             self.row_pos
         };
         self.col_pos = 0;
+        // FIXME: Should the line here get cleared?
     }
 
     pub fn clear(&mut self) {
