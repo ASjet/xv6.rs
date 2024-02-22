@@ -1,3 +1,5 @@
+use volatile::Volatile;
+
 use super::color::ColorCode;
 
 pub const BUFFER_WIDTH: usize = 80;
@@ -5,8 +7,6 @@ pub const BUFFER_HEIGHT: usize = 25;
 pub const INVALID_CHAR: u8 = 0xfe;
 
 const BUFFER_ADDR: isize = 0xb8000;
-const EMPTY_BUFFER: [[Char; BUFFER_WIDTH]; BUFFER_HEIGHT] =
-    [[Char::empty(); BUFFER_WIDTH]; BUFFER_HEIGHT];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
@@ -30,7 +30,7 @@ impl Char {
 
 #[repr(transparent)]
 struct Buffer {
-    chars: [[Char; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[Volatile<Char>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
@@ -132,17 +132,31 @@ impl Writer {
             self.row_pos = 0;
         } else {
             for row in count..BUFFER_HEIGHT {
-                self.buf.chars[row - count] = self.buf.chars[row];
+                self.copy_line(row, row - count);
             }
             self.row_pos -= count;
         }
         for row in BUFFER_HEIGHT - count..BUFFER_HEIGHT {
-            self.buf.chars[row].copy_from_slice(EMPTY_BUFFER[0]);
+            self.clear_line(row);
+        }
+    }
+
+    fn copy_line(&mut self, src: usize, dest: usize) {
+        for col in 0..BUFFER_WIDTH {
+            self.buf.chars[dest][col].write(self.buf.chars[src][col].read());
         }
     }
 
     fn clear(&mut self) {
-        self.buf.chars.copy_from_slice(&EMPTY_BUFFER);
+        for row in 0..BUFFER_HEIGHT {
+            self.clear_line(row);
+        }
+    }
+
+    fn clear_line(&mut self, row: usize) {
+        for col in 0..BUFFER_WIDTH {
+            self.buf.chars[row][col].write(Char::empty());
+        }
     }
 }
 
