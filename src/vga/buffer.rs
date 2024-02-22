@@ -1,8 +1,10 @@
 use super::color::ColorCode;
 
-const BUFFER_ADDR: isize = 0xb8000;
 pub const BUFFER_WIDTH: usize = 80;
 pub const BUFFER_HEIGHT: usize = 25;
+pub const INVALID_CHAR: u8 = 0xfe;
+
+const BUFFER_ADDR: isize = 0xb8000;
 const EMPTY_BUFFER: [[Char; BUFFER_WIDTH]; BUFFER_HEIGHT] =
     [[Char::empty(); BUFFER_WIDTH]; BUFFER_HEIGHT];
 
@@ -111,6 +113,6 @@ impl Writer {
 fn convert_unprintable(byte: u8) -> u8 {
     match byte {
         0x20..=0x7e | b'\n' => byte,
-        _ => 0xfe,
+        _ => INVALID_CHAR,
     }
 }
