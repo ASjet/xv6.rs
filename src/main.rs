@@ -27,14 +27,14 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
+    #[cfg(test)]
+    test_main();
+
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
     println!("Hello, World!\ninteger: {}, float: {}", 42, 3.14);
 
     // panic!("Some panic message");
-
-    #[cfg(test)]
-    test_main();
 
     loop {}
 }
