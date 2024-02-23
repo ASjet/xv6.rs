@@ -40,6 +40,18 @@ impl Char {
     }
 }
 
+impl From<Char> for u8 {
+    fn from(ch: Char) -> u8 {
+        ch.character
+    }
+}
+
+impl From<Char> for ColorCode {
+    fn from(ch: Char) -> ColorCode {
+        ch.color
+    }
+}
+
 #[repr(transparent)]
 struct BufferLine([Volatile<Char>; BUFFER_WIDTH]);
 
