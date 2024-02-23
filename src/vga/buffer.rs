@@ -1,8 +1,8 @@
 use core::fmt;
-use core::cmp::max;
-use volatile::Volatile;
-use spin::Mutex;
+use core::{cmp::max, fmt::Write};
 use lazy_static::lazy_static;
+use spin::Mutex;
+use volatile::Volatile;
 
 use super::color::{Color, ColorCode};
 
@@ -15,9 +15,20 @@ const BUFFER_ADDR: isize = 0xb8000;
 type Register = u64;
 
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(ColorCode::new(
-        Color::White, Color::Black
-    )));
+    pub static ref WRITER: Mutex<Writer> =
+        Mutex::new(Writer::new(ColorCode::new(Color::White, Color::Black)));
+}
+
+pub fn set_color(color: ColorCode) {
+    WRITER.lock().set_color(color);
+}
+
+pub fn set_pos(row: usize, col: usize) {
+    WRITER.lock().set_pos(row, col);
+}
+
+pub fn clear() {
+    WRITER.lock().clear();
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +52,18 @@ impl Char {
     }
 }
 
+impl From<Char> for u8 {
+    fn from(ch: Char) -> u8 {
+        ch.character
+    }
+}
+
+impl From<Char> for ColorCode {
+    fn from(ch: Char) -> ColorCode {
+        ch.color
+    }
+}
+
 #[repr(transparent)]
 struct BufferLine([Volatile<Char>; BUFFER_WIDTH]);
 
@@ -51,9 +74,12 @@ impl BufferLine {
             .for_each(|(i, reg)| dst[i].write(reg.read()));
     }
 
-
     pub fn write_char(&mut self, index: usize, ch: Char) {
         self.0[index].write(ch);
+    }
+
+    pub fn read_char(&self, index: usize) -> Char {
+        self.0[index].read()
     }
 
     pub fn clear(&mut self) {
@@ -69,6 +95,24 @@ impl BufferLine {
 
     fn to_register_mut(&mut self) -> &mut [Volatile<Register>] {
         to_register_mut(&mut self.0)
+    }
+
+    /// Compares the line with the specified string for test purposes.
+    fn compare_str(&self, s: &str) -> Option<usize> {
+        for (i, char) in s.bytes().enumerate() {
+            match char {
+                b'\n' => {
+                    break;
+                }
+                _ if char == u8::from(self.read_char(i)) => {
+                    continue;
+                }
+                _ => {
+                    return Some(i);
+                }
+            }
+        }
+        None
     }
 }
 
@@ -170,6 +214,8 @@ impl Writer {
 
     pub fn clear(&mut self) {
         self.buf.iter_mut().for_each(BufferLine::clear);
+        self.row_pos = 0;
+        self.col_pos = 0;
     }
 
     fn scroll(&mut self, count: usize) {
@@ -229,3 +275,56 @@ fn to_register<T>(arr: &[T]) -> &[Volatile<Register>] {
 fn to_register_mut<T>(arr: &mut [T]) -> &mut [Volatile<Register>] {
     unsafe { &mut *((arr as *mut [T]) as *mut [Volatile<Register>]) }
 }
+
+#[test_case]
+fn test_write_byte() {
+    WRITER.lock().col_pos = 0;
+    WRITER.lock().row_pos = 0;
+    WRITER.lock().write_byte(42);
+    assert_eq!(u8::from(WRITER.lock().buf[0].read_char(0)), 42);
+}
+
+#[test_case]
+fn test_set_pos() {
+    WRITER.lock().set_pos(5, 5);
+    WRITER.lock().write_byte(42);
+    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 42);
+}
+
+#[test_case]
+fn test_clear() {
+    WRITER.lock().set_pos(5, 5);
+    WRITER.lock().write_byte(42);
+    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 42);
+    WRITER.lock().clear();
+    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 0);
+}
+
+#[test_case]
+fn test_write_str() {
+    WRITER.lock().clear();
+    let s = "some output";
+    WRITER.lock().write_str(s);
+    assert_eq!(WRITER.lock().buf[0].compare_str(s), None);
+}
+
+#[test_case]
+fn test_newline() {
+    WRITER.lock().clear();
+    WRITER.lock().newline();
+    let s = "some output";
+    assert_eq!(WRITER.lock().buf[1].compare_str(s), Some(0));
+    WRITER.lock().write_str(s);
+    assert_eq!(WRITER.lock().buf[1].compare_str(s), None);
+}
+
+#[test_case]
+fn test_write_multiline() {
+    WRITER.lock().clear();
+    let s = "line1\nline2";
+    WRITER.lock().write_str(s);
+    let mut iter = s.split_whitespace();
+    assert_eq!(WRITER.lock().buf[0].compare_str(iter.next().unwrap()), None);
+    assert_eq!(WRITER.lock().buf[1].compare_str(iter.next().unwrap()), None);
+}
+

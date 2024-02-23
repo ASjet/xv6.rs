@@ -96,5 +96,10 @@ impl From<ColorCode> for u16 {
     fn from(color: ColorCode) -> u16 {
         color.0 as u16
     }
+}
 
+impl From<u8> for ColorCode {
+    fn from(num: u8) -> ColorCode {
+        ColorCode(num)
+    }
 }
