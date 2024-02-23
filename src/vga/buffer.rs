@@ -19,6 +19,18 @@ lazy_static! {
         Mutex::new(Writer::new(ColorCode::new(Color::White, Color::Black)));
 }
 
+pub fn set_color(color: ColorCode) {
+    WRITER.lock().set_color(color);
+}
+
+pub fn set_pos(row: usize, col: usize) {
+    WRITER.lock().set_pos(row, col);
+}
+
+pub fn clear() {
+    WRITER.lock().clear();
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct Char {
