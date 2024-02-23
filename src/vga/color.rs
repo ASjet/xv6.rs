@@ -96,5 +96,4 @@ impl From<ColorCode> for u16 {
     fn from(color: ColorCode) -> u16 {
         color.0 as u16
     }
-
 }

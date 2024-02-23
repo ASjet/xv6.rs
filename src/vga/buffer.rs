@@ -1,8 +1,8 @@
 use core::fmt;
-use core::cmp::max;
-use volatile::Volatile;
-use spin::Mutex;
+use core::{cmp::max, fmt::Write};
 use lazy_static::lazy_static;
+use spin::Mutex;
+use volatile::Volatile;
 
 use super::color::{Color, ColorCode};
 
@@ -15,9 +15,8 @@ const BUFFER_ADDR: isize = 0xb8000;
 type Register = u64;
 
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer::new(ColorCode::new(
-        Color::White, Color::Black
-    )));
+    pub static ref WRITER: Mutex<Writer> =
+        Mutex::new(Writer::new(ColorCode::new(Color::White, Color::Black)));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,7 +49,6 @@ impl BufferLine {
         line.to_register().iter().enumerate()
             .for_each(|(i, reg)| dst[i].write(reg.read()));
     }
-
 
     pub fn write_char(&mut self, index: usize, ch: Char) {
         self.0[index].write(ch);
