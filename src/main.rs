@@ -1,29 +1,18 @@
 #![no_std] // don't link the Rust standard library
 #![no_main] // disable all Rust-level entry points
+#![feature(custom_test_frameworks)]
+#![test_runner(xv6::test::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 #![allow(dead_code)]
 #![allow(unused_imports)]
-#![feature(custom_test_frameworks)]
-#![test_runner(crate::test::test_runner)]
-#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
 
-mod test;
+use xv6::asm;
+use xv6::println;
+use xv6::vga::{self, Color, ColorCode};
 
-mod vga;
-mod asm;
-mod serial;
-
-const PANIC_INFO_COLOR: vga::ColorCode = vga::ColorCode::new(vga::Color::LightRed, vga::Color::Black);
-
-/// This function is called on panic.
-#[panic_handler]
-#[cfg(not(test))]
-fn panic(info: &PanicInfo) -> ! {
-    vga::set_color(PANIC_INFO_COLOR);
-    println!("{}", info);
-    loop {}
-}
+const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black);
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
@@ -37,4 +26,18 @@ pub extern "C" fn _start() -> ! {
     // panic!("Some panic message");
 
     loop {}
+}
+
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    vga::set_color(PANIC_INFO_COLOR);
+    println!("{}", info);
+    loop {}
+}
+
+#[cfg(test)]
+#[panic_handler]
+pub fn panic(info: &PanicInfo) -> ! {
+    xv6::test::panic_handler(info)
 }
