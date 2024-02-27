@@ -16,6 +16,10 @@ const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
+    xv6::init();
+
+    x86_64::instructions::interrupts::int3();
+
     #[cfg(test)]
     test_main();
 
