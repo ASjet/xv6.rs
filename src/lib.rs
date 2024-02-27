@@ -3,6 +3,7 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(abi_x86_interrupt)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
@@ -12,6 +13,10 @@ pub mod asm;
 pub mod serial;
 pub mod test;
 pub mod vga;
+
+pub fn init() {
+    asm::init_idt();
+}
 
 // Entry point for unit test
 #[cfg(test)]
