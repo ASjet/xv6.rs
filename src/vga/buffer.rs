@@ -23,8 +23,16 @@ pub fn set_color(color: ColorCode) {
     WRITER.lock().set_color(color);
 }
 
+pub fn get_color() -> ColorCode {
+    WRITER.lock().get_color()
+}
+
 pub fn set_pos(row: usize, col: usize) {
     WRITER.lock().set_pos(row, col);
+}
+
+pub fn get_pos() -> (usize, usize) {
+    WRITER.lock().get_pos()
 }
 
 pub fn clear() {
@@ -70,7 +78,9 @@ struct BufferLine([Volatile<Char>; BUFFER_WIDTH]);
 impl BufferLine {
     pub fn write_line(&mut self, line: &BufferLine) {
         let dst = self.to_register_mut();
-        line.to_register().iter().enumerate()
+        line.to_register()
+            .iter()
+            .enumerate()
             .for_each(|(i, reg)| dst[i].write(reg.read()));
     }
 
@@ -154,6 +164,10 @@ impl Writer {
         self.color = color;
     }
 
+    pub fn get_color(&self) -> ColorCode {
+        self.color
+    }
+
     /// Sets the position of the writer to the specified `row` and `col`.
     ///
     /// # Arguments
@@ -168,6 +182,10 @@ impl Writer {
     pub fn set_pos(&mut self, row: usize, col: usize) {
         self.row_pos = row % BUFFER_HEIGHT;
         self.col_pos = col % BUFFER_WIDTH;
+    }
+
+    pub fn get_pos(&self) -> (usize, usize) {
+        (self.row_pos, self.col_pos)
     }
 
     /// Writes a single byte to the buffer.
@@ -230,7 +248,8 @@ impl Writer {
         }
 
         self.buf[BUFFER_HEIGHT - count..BUFFER_HEIGHT]
-            .iter_mut().for_each(BufferLine::clear);
+            .iter_mut()
+            .for_each(BufferLine::clear);
     }
 
     fn copy_line(&mut self, src: usize, dst: usize) -> bool {
@@ -327,4 +346,3 @@ fn test_write_multiline() {
     assert_eq!(WRITER.lock().buf[0].compare_str(iter.next().unwrap()), None);
     assert_eq!(WRITER.lock().buf[1].compare_str(iter.next().unwrap()), None);
 }
-
