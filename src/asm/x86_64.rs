@@ -33,3 +33,8 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
     vga::set_color(old_color);
 }
+
+#[test_case]
+fn test_breakpoint_interrupt() {
+    x86_64::instructions::interrupts::int3();
+}
