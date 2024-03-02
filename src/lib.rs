@@ -15,6 +15,7 @@ pub mod test;
 pub mod vga;
 
 pub fn init() {
+    asm::gdt::init();
     asm::init_idt();
 }
 

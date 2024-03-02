@@ -23,6 +23,10 @@ pub extern "C" fn _start() -> ! {
     #[cfg(test)]
     test_main();
 
+    unsafe {
+        *(0xdeadbeef as *mut u8) = 42;
+    };
+
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
     println!("Hello, World!\ninteger: {}, float: {}", 42, 3.14);

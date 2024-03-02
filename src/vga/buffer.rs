@@ -39,6 +39,17 @@ pub fn clear() {
     WRITER.lock().clear();
 }
 
+#[macro_export]
+macro_rules! with_color {
+    ($color:expr, $block:expr) => {{
+        let old_color = $crate::vga::get_color();
+        $crate::vga::set_color($color);
+        let result = $block;
+        $crate::vga::set_color(old_color);
+        result
+    }};
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct Char {
