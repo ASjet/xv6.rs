@@ -1,3 +1,5 @@
+use core::char;
+
 use super::{gdt, scan_code};
 use crate::{print, println, vga, with_color};
 use int_enum::IntEnum;
@@ -73,7 +75,27 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 }
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!("{}", scan_code());
+    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use spin::Mutex;
+    use x86_64::instructions::port::Port;
+
+    lazy_static! {
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = Mutex::new(
+            Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore)
+        );
+    }
+
+    let mut keyboard = KEYBOARD.lock();
+
+    if let Ok(Some(key_event)) = keyboard.add_byte(scan_code()) {
+        if let Some(key) = keyboard.process_keyevent(key_event) {
+            match key {
+                DecodedKey::Unicode(ch) => print!("{}", ch),
+                DecodedKey::RawKey(key) => print!("{:?}", key),
+            }
+        }
+    }
+
     InterruptIndex::Keyboard.eoi();
 }
 
