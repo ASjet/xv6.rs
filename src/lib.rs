@@ -9,15 +9,15 @@
 
 use core::panic::PanicInfo;
 
-pub mod asm;
+pub mod arch;
 pub mod serial;
 pub mod test;
 pub mod vga;
 
 pub fn init() {
-    asm::gdt::init();
-    asm::init_idt();
-    asm::init_pic();
+    arch::gdt::init();
+    arch::interrupt::init_idt();
+    arch::interrupt::init_pic();
 }
 
 // Entry point for unit test
