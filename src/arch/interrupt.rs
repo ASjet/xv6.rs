@@ -1,4 +1,4 @@
-use super::gdt;
+use super::{gdt, scan_code};
 use crate::{print, println, vga, with_color};
 use int_enum::IntEnum;
 use lazy_static::lazy_static;
@@ -19,6 +19,7 @@ lazy_static! {
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
+        idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
         idt
     };
 }
@@ -30,6 +31,7 @@ pub static PICS: spin::Mutex<ChainedPics> =
 #[repr(u8)]
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
+    Keyboard = PIC_1_OFFSET + 1,
 }
 
 impl InterruptIndex {
@@ -68,6 +70,11 @@ extern "x86-interrupt" fn double_fault_handler(
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     print!(".");
     InterruptIndex::Timer.eoi();
+}
+
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    print!("{}", scan_code());
+    InterruptIndex::Keyboard.eoi();
 }
 
 #[test_case]
