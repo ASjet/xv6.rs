@@ -18,14 +18,14 @@ const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black
 pub extern "C" fn _start() -> ! {
     xv6::init();
 
-    x86_64::instructions::interrupts::int3();
+    // x86_64::instructions::interrupts::int3();
 
     #[cfg(test)]
     test_main();
 
-    unsafe {
-        *(0xdeadbeef as *mut u8) = 42;
-    };
+    // unsafe {
+    //     *(0xdeadbeef as *mut u8) = 42;
+    // };
 
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
