@@ -17,11 +17,14 @@ panic = "abort" # disable stack unwinding on panic
 [package.metadata.bootimage]
 test-args = [
     # map the device isa-debug-exit I/O port at address 0xf4 with port size 0x04 bytes
-    "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
+    "-device",
+    "isa-debug-exit,iobase=0xf4,iosize=0x04",
     # enable the serial device and redirect the output to the stdio
-    "-serial", "stdio",
+    "-serial",
+    "stdio",
     # disable display vga window when running tests
-    "-display", "none",
+    "-display",
+    "none",
 ]
 test-success-exit-code = 33 # specify success exit code `(0x10 << 1) | 1`(33)
 test-timeout = 300 # specify timeout in seconds
@@ -44,6 +47,7 @@ volatile = "0.2.6"
 spin = "0.5.2"
 x86_64 = "0.14.2"
 uart_16550 = "0.2.0"
+pic8259 = "0.10.1"
 
 [dependencies.lazy_static]
 version = "1.0"

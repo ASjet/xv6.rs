@@ -17,6 +17,7 @@ pub mod vga;
 pub fn init() {
     asm::gdt::init();
     asm::init_idt();
+    asm::init_pic();
 }
 
 // Entry point for unit test
