@@ -10,7 +10,7 @@ use xv6::println;
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
     test_main();
-    loop {}
+    xv6::arch::halt();
 }
 
 #[panic_handler]

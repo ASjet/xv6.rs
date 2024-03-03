@@ -1,13 +1,13 @@
 use core::panic::PanicInfo;
 
-use crate::asm;
+use crate::arch;
 use crate::{serial_print, serial_println};
 
 pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]");
     serial_println!("Error: {}", info);
-    asm::exit_qemu(asm::QemuExitCode::Failure);
-    loop {}
+    arch::exit_qemu(arch::QemuExitCode::Failure);
+    arch::halt();
 }
 
 pub trait Testable {
@@ -31,5 +31,5 @@ pub fn test_runner(tests: &[&dyn Testable]) {
         serial_println!("[ok]");
     }
 
-    asm::exit_qemu(asm::QemuExitCode::Success);
+    arch::exit_qemu(arch::QemuExitCode::Success);
 }

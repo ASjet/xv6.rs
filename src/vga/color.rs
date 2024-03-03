@@ -1,5 +1,7 @@
+use int_enum::IntEnum;
+
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntEnum)]
 #[repr(u8)]
 pub enum Color {
     Black = 0,
@@ -18,30 +20,6 @@ pub enum Color {
     Pink = 13,
     Yellow = 14,
     White = 15,
-}
-
-impl From<u8> for Color {
-    fn from(num: u8) -> Color {
-        match num & 0xf {
-            0 => Color::Black,
-            1 => Color::Blue,
-            2 => Color::Green,
-            3 => Color::Cyan,
-            4 => Color::Red,
-            5 => Color::Magenta,
-            6 => Color::Brown,
-            7 => Color::LightGray,
-            8 => Color::DarkGray,
-            9 => Color::LightBlue,
-            10 => Color::LightGreen,
-            11 => Color::LightCyan,
-            12 => Color::LightRed,
-            13 => Color::Pink,
-            14 => Color::Yellow,
-            15 => Color::White,
-            other => todo!("Invalid u8 color number: {}", other),
-        }
-    }
 }
 
 /// Represents a color code that combines a foreground and background color.
@@ -79,7 +57,7 @@ impl ColorCode {
     ///
     /// The foreground color.
     pub fn foreground(&self) -> Color {
-        Color::from(self.0)
+        Color::try_from(self.0).unwrap()
     }
 
     /// Returns the background color of the `ColorCode`.
@@ -88,7 +66,7 @@ impl ColorCode {
     ///
     /// The background color.
     pub fn background(&self) -> Color {
-        Color::from(self.0)
+        Color::try_from(self.0).unwrap()
     }
 }
 

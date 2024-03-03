@@ -308,52 +308,58 @@ fn to_register_mut<T>(arr: &mut [T]) -> &mut [Volatile<Register>] {
 
 #[test_case]
 fn test_write_byte() {
-    WRITER.lock().col_pos = 0;
-    WRITER.lock().row_pos = 0;
-    WRITER.lock().write_byte(42);
-    assert_eq!(u8::from(WRITER.lock().buf[0].read_char(0)), 42);
+    let mut writer = WRITER.lock();
+    writer.col_pos = 0;
+    writer.row_pos = 0;
+    writer.write_byte(42);
+    assert_eq!(u8::from(writer.buf[0].read_char(0)), 42);
 }
 
 #[test_case]
 fn test_set_pos() {
-    WRITER.lock().set_pos(5, 5);
-    WRITER.lock().write_byte(42);
-    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 42);
+    let mut writer = WRITER.lock();
+    writer.set_pos(5, 5);
+    writer.write_byte(42);
+    assert_eq!(u8::from(writer.buf[5].read_char(5)), 42);
 }
 
 #[test_case]
 fn test_clear() {
-    WRITER.lock().set_pos(5, 5);
-    WRITER.lock().write_byte(42);
-    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 42);
-    WRITER.lock().clear();
-    assert_eq!(u8::from(WRITER.lock().buf[5].read_char(5)), 0);
+    let mut writer = WRITER.lock();
+    writer.set_pos(5, 5);
+    writer.write_byte(42);
+    assert_eq!(u8::from(writer.buf[5].read_char(5)), 42);
+    writer.clear();
+    assert_eq!(u8::from(writer.buf[5].read_char(5)), 0);
 }
 
 #[test_case]
 fn test_write_str() {
-    WRITER.lock().clear();
+    let mut writer = WRITER.lock();
+    writer.clear();
     let s = "some output";
-    WRITER.lock().write_str(s);
-    assert_eq!(WRITER.lock().buf[0].compare_str(s), None);
+    writer.write_str(s);
+    assert_eq!(writer.buf[0].compare_str(s), None);
 }
 
 #[test_case]
 fn test_newline() {
-    WRITER.lock().clear();
-    WRITER.lock().newline();
+    let mut writer = WRITER.lock();
+    writer.clear();
+    writer.newline();
     let s = "some output";
-    assert_eq!(WRITER.lock().buf[1].compare_str(s), Some(0));
-    WRITER.lock().write_str(s);
-    assert_eq!(WRITER.lock().buf[1].compare_str(s), None);
+    assert_eq!(writer.buf[1].compare_str(s), Some(0));
+    writer.write_str(s);
+    assert_eq!(writer.buf[1].compare_str(s), None);
 }
 
 #[test_case]
 fn test_write_multiline() {
-    WRITER.lock().clear();
+    let mut writer = WRITER.lock();
+    writer.clear();
     let s = "line1\nline2";
-    WRITER.lock().write_str(s);
+    writer.write_str(s);
     let mut iter = s.split_whitespace();
-    assert_eq!(WRITER.lock().buf[0].compare_str(iter.next().unwrap()), None);
-    assert_eq!(WRITER.lock().buf[1].compare_str(iter.next().unwrap()), None);
+    assert_eq!(writer.buf[0].compare_str(iter.next().unwrap()), None);
+    assert_eq!(writer.buf[1].compare_str(iter.next().unwrap()), None);
 }

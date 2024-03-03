@@ -8,7 +8,7 @@
 
 use core::panic::PanicInfo;
 
-use xv6::asm;
+use xv6::arch;
 use xv6::println;
 use xv6::vga::{self, Color, ColorCode};
 
@@ -18,14 +18,14 @@ const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black
 pub extern "C" fn _start() -> ! {
     xv6::init();
 
-    x86_64::instructions::interrupts::int3();
+    // x86_64::instructions::interrupts::int3();
 
     #[cfg(test)]
     test_main();
 
-    unsafe {
-        *(0xdeadbeef as *mut u8) = 42;
-    };
+    // unsafe {
+    //     *(0xdeadbeef as *mut u8) = 42;
+    // };
 
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
@@ -33,7 +33,7 @@ pub extern "C" fn _start() -> ! {
 
     // panic!("Some panic message");
 
-    loop {}
+    arch::halt();
 }
 
 #[cfg(not(test))]
@@ -41,7 +41,7 @@ pub extern "C" fn _start() -> ! {
 fn panic(info: &PanicInfo) -> ! {
     vga::set_color(PANIC_INFO_COLOR);
     println!("{}", info);
-    loop {}
+    arch::halt();
 }
 
 #[cfg(test)]
