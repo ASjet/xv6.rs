@@ -53,5 +53,5 @@ extern "x86-interrupt" fn test_double_fault_handler(
 ) -> ! {
     serial_println!("[ok]");
     arch::exit_qemu(arch::QemuExitCode::Success);
-    loop {}
+    arch::halt();
 }

@@ -33,7 +33,7 @@ pub extern "C" fn _start() -> ! {
 
     // panic!("Some panic message");
 
-    loop {}
+    arch::halt();
 }
 
 #[cfg(not(test))]
@@ -41,7 +41,7 @@ pub extern "C" fn _start() -> ! {
 fn panic(info: &PanicInfo) -> ! {
     vga::set_color(PANIC_INFO_COLOR);
     println!("{}", info);
-    loop {}
+    arch::halt();
 }
 
 #[cfg(test)]

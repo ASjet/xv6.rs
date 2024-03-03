@@ -26,7 +26,7 @@ pub fn init() {
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+    arch::halt();
 }
 
 // Panic handler for unit test

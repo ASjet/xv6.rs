@@ -7,7 +7,7 @@ pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]");
     serial_println!("Error: {}", info);
     arch::exit_qemu(arch::QemuExitCode::Failure);
-    loop {}
+    arch::halt();
 }
 
 pub trait Testable {
