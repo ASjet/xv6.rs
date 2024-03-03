@@ -1,10 +1,14 @@
-use core::fmt::{Arguments, Write};
 use super::buffer::WRITER;
 use super::ColorCode;
+use core::fmt::{Arguments, Write};
 
 #[doc(hidden)]
 pub fn _print(args: Arguments) {
-    WRITER.lock().write_fmt(args).unwrap();
+    use x86_64::instructions::interrupts;
+
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 #[macro_export]
