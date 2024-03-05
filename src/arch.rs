@@ -1,13 +1,7 @@
 #![allow(dead_code)]
 
-pub mod gdt;
-pub mod interrupt;
+#[cfg(target_arch = "x86_64")]
+mod x86_64;
 
-mod port;
-pub use port::*;
-
-pub fn halt() -> ! {
-    loop {
-        x86_64::instructions::hlt();
-    }
-}
+#[cfg(target_arch = "x86_64")]
+pub use x86_64::*;
