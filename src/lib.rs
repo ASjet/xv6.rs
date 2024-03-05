@@ -7,12 +7,12 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use core::panic::PanicInfo;
-
 pub mod arch;
 pub mod serial;
 pub mod test;
 pub mod vga;
+
+use core::panic::PanicInfo;
 
 pub fn init() {
     arch::gdt::init();

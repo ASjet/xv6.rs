@@ -1,10 +1,9 @@
+use super::color::{Color, ColorCode};
 use core::fmt;
 use core::{cmp::max, fmt::Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
-
-use super::color::{Color, ColorCode};
 
 pub const BUFFER_WIDTH: usize = 80;
 pub const BUFFER_HEIGHT: usize = 25;

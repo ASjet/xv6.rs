@@ -1,7 +1,6 @@
-use core::char;
-
-use super::{gdt, scan_code};
+use super::{gdt, PortIndex};
 use crate::{print, println, vga, with_color};
+use core::char;
 use int_enum::IntEnum;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;

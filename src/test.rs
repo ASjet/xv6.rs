@@ -1,7 +1,6 @@
-use core::panic::PanicInfo;
-
 use crate::arch;
 use crate::{serial_print, serial_println};
+use core::panic::PanicInfo;
 
 pub fn panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]");
