@@ -1,3 +1,4 @@
+use crate::arch;
 use core::fmt::{Arguments, Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -15,9 +16,7 @@ lazy_static! {
 
 #[doc(hidden)]
 pub fn _print(args: Arguments) {
-    use x86_64::instructions::interrupts;
-
-    interrupts::without_interrupts(|| {
+    arch::interrupt::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)
