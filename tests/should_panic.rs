@@ -11,14 +11,14 @@ pub extern "C" fn _start() -> ! {
     should_panic();
     serial_println!("[test did not panic]");
     arch::exit_qemu(arch::QemuExitCode::Failure);
-    xv6::arch::halt();
+    arch::halt();
 }
 
 #[panic_handler]
 pub fn panic(_: &PanicInfo) -> ! {
     serial_println!("[ok]");
     arch::exit_qemu(arch::QemuExitCode::Success);
-    xv6::arch::halt();
+    arch::halt();
 }
 
 fn should_panic() {

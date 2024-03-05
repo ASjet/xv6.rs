@@ -5,7 +5,6 @@
 use core::panic::PanicInfo;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
-
 use xv6::{arch, serial_print, serial_println};
 
 lazy_static! {

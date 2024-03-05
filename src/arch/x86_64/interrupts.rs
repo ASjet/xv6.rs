@@ -1,11 +1,11 @@
-use core::char;
-
-use super::{gdt, scan_code};
+use super::{gdt, PortIndex};
 use crate::{print, println, vga, with_color};
+use core::char;
 use int_enum::IntEnum;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
+use x86_64::instructions;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -28,6 +28,14 @@ lazy_static! {
 
 pub static PICS: spin::Mutex<ChainedPics> =
     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+
+#[inline]
+pub fn without_interrupts<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    instructions::interrupts::without_interrupts(f)
+}
 
 #[derive(Debug, Clone, Copy, IntEnum)]
 #[repr(u8)]
@@ -87,7 +95,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
     let mut keyboard = KEYBOARD.lock();
 
-    if let Ok(Some(key_event)) = keyboard.add_byte(scan_code()) {
+    if let Ok(Some(key_event)) = keyboard.add_byte(PortIndex::ScanCode.read()) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
                 DecodedKey::Unicode(ch) => print!("{}", ch),

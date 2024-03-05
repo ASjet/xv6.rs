@@ -7,7 +7,6 @@
 #![allow(unused_imports)]
 
 use core::panic::PanicInfo;
-
 use xv6::arch;
 use xv6::println;
 use xv6::vga::{self, Color, ColorCode};

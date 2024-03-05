@@ -7,17 +7,17 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use core::panic::PanicInfo;
-
 pub mod arch;
-pub mod serial;
+pub mod print;
 pub mod test;
 pub mod vga;
 
+use core::panic::PanicInfo;
+
 pub fn init() {
     arch::gdt::init();
-    arch::interrupt::init_idt();
-    arch::interrupt::init_pic();
+    arch::interrupts::init_idt();
+    arch::interrupts::init_pic();
 }
 
 // Entry point for unit test
