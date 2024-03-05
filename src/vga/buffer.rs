@@ -1,6 +1,7 @@
 use super::color::{Color, ColorCode};
+use core::cmp::max;
 use core::fmt;
-use core::{cmp::max, fmt::Write};
+use core::fmt::{Arguments, Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
@@ -16,6 +17,15 @@ type Register = u64;
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> =
         Mutex::new(Writer::new(ColorCode::new(Color::White, Color::Black)));
+}
+
+#[doc(hidden)]
+pub fn vga_print(args: Arguments) {
+    use crate::arch;
+
+    arch::interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 pub fn set_color(color: ColorCode) {
