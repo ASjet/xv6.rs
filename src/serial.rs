@@ -16,7 +16,7 @@ lazy_static! {
 
 #[doc(hidden)]
 pub fn _print(args: Arguments) {
-    arch::interrupt::without_interrupts(|| {
+    arch::interrupts::without_interrupts(|| {
         SERIAL1
             .lock()
             .write_fmt(args)

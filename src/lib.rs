@@ -16,8 +16,8 @@ pub mod vga;
 
 pub fn init() {
     arch::gdt::init();
-    arch::interrupt::init_idt();
-    arch::interrupt::init_pic();
+    arch::interrupts::init_idt();
+    arch::interrupts::init_pic();
 }
 
 // Entry point for unit test

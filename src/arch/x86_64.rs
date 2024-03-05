@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 pub mod gdt;
-pub mod interrupt;
+pub mod interrupts;
 
 mod port;
 pub use port::*;
