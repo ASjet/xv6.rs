@@ -8,7 +8,7 @@
 #![allow(unused_imports)]
 
 pub mod arch;
-pub mod serial;
+pub mod print;
 pub mod test;
 pub mod vga;
 
