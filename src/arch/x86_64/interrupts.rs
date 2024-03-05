@@ -96,7 +96,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
 
     let mut keyboard = KEYBOARD.lock();
 
-    if let Ok(Some(key_event)) = keyboard.add_byte(scan_code()) {
+    if let Ok(Some(key_event)) = keyboard.add_byte(PortIndex::ScanCode.read()) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
                 DecodedKey::Unicode(ch) => print!("{}", ch),
