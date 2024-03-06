@@ -16,8 +16,11 @@ use core::panic::PanicInfo;
 
 pub fn init() {
     arch::gdt::init();
+    println!("[{:12.6}] GDT initialized", arch::interrupts::ticks());
     arch::interrupts::init_idt();
+    println!("[{:12.6}] IDT initialized", arch::interrupts::ticks());
     arch::interrupts::init_pic();
+    println!("[{:12.6}] PIC initialized", arch::interrupts::ticks());
 }
 
 // Entry point for unit test

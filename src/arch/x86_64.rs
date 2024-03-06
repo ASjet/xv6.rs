@@ -6,10 +6,12 @@ pub mod interrupts;
 mod port;
 pub use port::*;
 
+use crate::println;
 use core::fmt::{Arguments, Write};
 
 #[inline]
 pub fn halt() -> ! {
+    println!("[{:12.6}] system halt", interrupts::ticks());
     loop {
         x86_64::instructions::hlt();
     }

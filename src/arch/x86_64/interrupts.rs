@@ -1,6 +1,7 @@
 use super::{gdt, PortIndex};
 use crate::{print, println, vga, with_color};
 use core::char;
+use core::ops::Div;
 use int_enum::IntEnum;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
@@ -10,6 +11,11 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+pub static mut TIMER_TICKS: u64 = 0;
+
+pub fn ticks() -> f32 {
+    unsafe { TIMER_TICKS as f32 / 10.0 }
+}
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
@@ -78,7 +84,9 @@ extern "x86-interrupt" fn double_fault_handler(
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!(".");
+    unsafe {
+        TIMER_TICKS += 1;
+    }
     InterruptIndex::Timer.eoi();
 }
 
