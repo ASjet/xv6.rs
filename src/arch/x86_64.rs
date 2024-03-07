@@ -31,3 +31,12 @@ pub fn serial_print(args: Arguments) {
             .expect("Printing to serial failed");
     })
 }
+
+pub fn init() {
+    gdt::init();
+    println!("[{:12.6}] GDT initialized", interrupts::ticks());
+    interrupts::init_idt();
+    println!("[{:12.6}] IDT initialized", interrupts::ticks());
+    interrupts::init_pic();
+    println!("[{:12.6}] PIC initialized", interrupts::ticks());
+}
