@@ -38,8 +38,9 @@ pub extern "C" fn _start() -> ! {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    vga::set_color(PANIC_INFO_COLOR);
-    println!("{}", info);
+    xv6::with_color!(PANIC_INFO_COLOR, {
+        println!("{}", info);
+    });
     arch::halt();
 }
 
