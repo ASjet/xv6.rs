@@ -1,4 +1,4 @@
-use super::{gdt, PortIndex};
+use super::{gdt, halt, PortIndex};
 use crate::{print, println, vga, with_color};
 use core::char;
 use core::ops::Div;
@@ -6,8 +6,8 @@ use int_enum::IntEnum;
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
-use x86_64::instructions;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::instructions::{self};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
@@ -25,6 +25,7 @@ lazy_static! {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+            idt.page_fault.set_handler_fn(page_fault_handler);
         }
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
@@ -69,18 +70,18 @@ pub fn init_pic() {
     x86_64::instructions::interrupts::enable();
 }
 
-const INTERRUPT_COLOR: vga::ColorCode = vga::ColorCode::new(vga::Color::Yellow, vga::Color::Black);
-extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    with_color!(INTERRUPT_COLOR, {
-        println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
-    });
-}
-
 extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
     panic!("EXCEPTION: DOUBLE_FAULT\n{:#?}", stack_frame);
+}
+
+const INTERRUPT_COLOR: vga::ColorCode = vga::ColorCode::new(vga::Color::Yellow, vga::Color::Black);
+extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
+    with_color!(INTERRUPT_COLOR, {
+        println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    });
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
@@ -113,6 +114,22 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     }
 
     InterruptIndex::Keyboard.eoi();
+}
+
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    with_color!(INTERRUPT_COLOR, {
+        println!("EXCEPTION: PAGE FAULT");
+        println!("Accessed Address: {:?}", Cr2::read());
+        println!("Error Code: {:?}", error_code);
+        println!("{:#?}", stack_frame);
+    });
+
+    halt();
 }
 
 #[test_case]

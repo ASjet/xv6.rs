@@ -50,10 +50,10 @@ pub fn clear() {
 
 #[macro_export]
 macro_rules! with_color {
-    ($color:expr, $block:expr) => {{
+    ($color:expr, $inner:block) => {{
         let old_color = $crate::vga::get_color();
         $crate::vga::set_color($color);
-        let result = $block;
+        let result = $inner;
         $crate::vga::set_color(old_color);
         result
     }};

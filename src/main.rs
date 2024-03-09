@@ -22,9 +22,9 @@ pub extern "C" fn _start() -> ! {
     #[cfg(test)]
     test_main();
 
-    // unsafe {
-    //     *(0xdeadbeef as *mut u8) = 42;
-    // };
+    unsafe {
+        *(0xdeadbeef as *mut u8) = 42;
+    };
 
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
@@ -38,8 +38,9 @@ pub extern "C" fn _start() -> ! {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    vga::set_color(PANIC_INFO_COLOR);
-    println!("{}", info);
+    xv6::with_color!(PANIC_INFO_COLOR, {
+        println!("{}", info);
+    });
     arch::halt();
 }
 
