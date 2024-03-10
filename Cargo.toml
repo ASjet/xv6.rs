@@ -29,6 +29,9 @@ test-args = [
 test-success-exit-code = 33 # specify success exit code `(0x10 << 1) | 1`(33)
 test-timeout = 300 # specify timeout in seconds
 
+[package.metadata.bootloader]
+physical-memory-offset = "0x0000f00000000000" # 1 tib
+
 [[test]]
 name = "should_panic"
 harness = false
@@ -42,7 +45,7 @@ name = "xv6"
 bench = false
 
 [dependencies]
-bootloader = "0.9"
+bootloader = { version = "0.9", features = ["map_physical_memory"] }
 volatile = "0.2.6"
 spin = "0.5.2"
 x86_64 = "0.14.2"
