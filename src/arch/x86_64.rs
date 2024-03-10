@@ -2,6 +2,7 @@
 
 pub mod gdt;
 pub mod interrupts;
+pub mod vm;
 
 mod port;
 pub use port::*;

@@ -10,6 +10,7 @@ use bootloader::entry_point;
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
 use xv6::arch;
+use xv6::arch::vm;
 use xv6::dmesg;
 use xv6::println;
 use xv6::vga::{self, Color, ColorCode};
@@ -35,6 +36,23 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     #[cfg(test)]
     test_main();
+
+    let phys_offset = boot_info.physical_memory_offset as usize;
+
+    let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr(), phys_offset) };
+    for (i, entry) in l4_table.iter().enumerate() {
+        if !entry.is_unused() {
+            dmesg!("L4 Entry {}: {:?}", i, entry);
+
+            let phys = entry.frame().unwrap().start_address().as_u64() as usize;
+            let l3_table = unsafe { vm::load_page_table(phys, phys_offset) };
+            for (i, entry) in l3_table.iter().enumerate() {
+                if !entry.is_unused() {
+                    dmesg!("  L3 Entry {}: {:?}", i, entry);
+                }
+            }
+        }
+    }
 
     // unsafe {
     //     *(0xdeadbeef as *mut u8) = 42;
