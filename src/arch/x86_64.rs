@@ -6,12 +6,12 @@ pub mod interrupts;
 mod port;
 pub use port::*;
 
-use crate::println;
+use crate::{dmesg, println};
 use core::fmt::{Arguments, Write};
 
 #[inline]
 pub fn halt() -> ! {
-    println!("[{:12.6}] system halt", interrupts::ticks());
+    dmesg!("system halt");
     loop {
         x86_64::instructions::hlt();
     }
@@ -34,9 +34,9 @@ pub fn serial_print(args: Arguments) {
 
 pub fn init() {
     gdt::init();
-    println!("[{:12.6}] GDT initialized", interrupts::ticks());
+    dmesg!("GDT initialized");
     interrupts::init_idt();
-    println!("[{:12.6}] IDT initialized", interrupts::ticks());
+    dmesg!("IDT initialized");
     interrupts::init_pic();
-    println!("[{:12.6}] PIC initialized", interrupts::ticks());
+    dmesg!("PIC initialized")
 }
