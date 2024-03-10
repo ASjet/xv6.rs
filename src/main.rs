@@ -39,20 +39,37 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     let phys_offset = boot_info.physical_memory_offset as usize;
 
-    let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr(), phys_offset) };
-    for (i, entry) in l4_table.iter().enumerate() {
-        if !entry.is_unused() {
-            dmesg!("L4 Entry {}: {:?}", i, entry);
+    let addresses = [
+        // the identity-mapped vga buffer page
+        0xb8000,
+        // some code page
+        0x201008,
+        // some stack page
+        0x0100_0020_1a10,
+        // virtual address mapped to physical address 0
+        boot_info.physical_memory_offset,
+    ];
 
-            let phys = entry.frame().unwrap().start_address().as_u64() as usize;
-            let l3_table = unsafe { vm::load_page_table(phys, phys_offset) };
-            for (i, entry) in l3_table.iter().enumerate() {
-                if !entry.is_unused() {
-                    dmesg!("  L3 Entry {}: {:?}", i, entry);
-                }
-            }
-        }
+    for &address in &addresses {
+        let virt = address as usize;
+        let phys = unsafe { vm::virt_to_phys(virt, phys_offset) };
+        println!("VirtualAddr({:#x}) -> PhysAddr({:#x?})", virt, phys);
     }
+
+    // let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr(), phys_offset) };
+    // for (i, entry) in l4_table.iter().enumerate() {
+    //     if !entry.is_unused() {
+    //         dmesg!("L4 Entry {}: {:?}", i, entry);
+
+    //         let phys = entry.frame().unwrap().start_address().as_u64() as usize;
+    //         let l3_table = unsafe { vm::load_page_table(phys, phys_offset) };
+    //         for (i, entry) in l3_table.iter().enumerate() {
+    //             if !entry.is_unused() {
+    //                 dmesg!("  L3 Entry {}: {:?}", i, entry);
+    //             }
+    //         }
+    //     }
+    // }
 
     // unsafe {
     //     *(0xdeadbeef as *mut u8) = 42;
