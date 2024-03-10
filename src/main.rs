@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use bootloader::entry_point;
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
 use xv6::arch;
@@ -15,8 +16,8 @@ use xv6::vga::{self, Color, ColorCode};
 
 const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black);
 
-#[no_mangle] // don't mangle the name of this function
-pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
+entry_point!(kernel_main);
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
     xv6::init();
 
     dmesg!(
