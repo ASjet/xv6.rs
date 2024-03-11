@@ -8,6 +8,7 @@ mod port;
 pub use port::*;
 
 use crate::{dmesg, println};
+use bootloader::BootInfo;
 use core::fmt::{Arguments, Write};
 
 #[inline]
@@ -33,11 +34,13 @@ pub fn serial_print(args: Arguments) {
     })
 }
 
-pub fn init() {
+pub fn init(boot_info: &'static BootInfo) {
     gdt::init();
     dmesg!("GDT initialized");
     interrupts::init_idt();
     dmesg!("IDT initialized");
     interrupts::init_pic();
-    dmesg!("PIC initialized")
+    dmesg!("PIC initialized");
+    vm::init(boot_info);
+    dmesg!("VM initialized");
 }

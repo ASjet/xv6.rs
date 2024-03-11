@@ -19,7 +19,7 @@ const PANIC_INFO_COLOR: ColorCode = ColorCode::new(Color::LightRed, Color::Black
 
 entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    xv6::init();
+    xv6::init(boot_info);
 
     dmesg!(
         "physical memory offset: {:#x}",
@@ -37,8 +37,6 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
-    let phys_offset = boot_info.physical_memory_offset as usize;
-
     let addresses = [
         // the identity-mapped vga buffer page
         0xb8000,
@@ -52,7 +50,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     for &address in &addresses {
         let virt = address as usize;
-        let phys = unsafe { vm::virt_to_phys(virt, phys_offset) };
+        let phys = unsafe { vm::virt_to_phys(virt) };
         println!("VirtualAddr({:#x}) -> PhysAddr({:#x?})", virt, phys);
     }
 

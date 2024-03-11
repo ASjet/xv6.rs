@@ -12,13 +12,14 @@ pub mod print;
 pub mod test;
 pub mod vga;
 
+use bootloader::BootInfo;
 use core::panic::PanicInfo;
 
 #[cfg(test)]
-use bootloader::{entry_point, BootInfo};
+use bootloader::entry_point;
 
-pub fn init() {
-    arch::init();
+pub fn init(boot_info: &'static BootInfo) {
+    arch::init(boot_info);
 }
 
 #[cfg(test)]
@@ -26,8 +27,8 @@ entry_point!(test_kernel_main);
 
 /// Entry point for unit test
 #[cfg(test)]
-fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
-    init();
+fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
     test_main();
     arch::halt();
 }
