@@ -51,7 +51,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     for &address in &addresses {
         let virt = address as usize;
         let phys = unsafe { vm::virt_to_phys(virt) };
-        println!("VirtualAddr({:#x}) -> PhysAddr({:#x?})", virt, phys);
+        println!("VirtualAddr({:#x}) -> PhysAddr({:x?})", virt, phys);
     }
 
     // let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr(), phys_offset) };

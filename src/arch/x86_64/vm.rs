@@ -1,12 +1,18 @@
 use bootloader::BootInfo;
-use x86_64::structures::paging::{PageTable, PhysFrame};
+use x86_64::structures::paging::{Mapper, OffsetPageTable, PageTable, PhysFrame, Translate};
 use x86_64::{PhysAddr, VirtAddr};
 
 static mut PHYSICAL_MEMORY_OFFSET: Option<usize> = None;
+static mut OFFSET_PAGE_TABLE: Option<OffsetPageTable<'static>> = None;
 
+/// Must init at early boot stage before any other function in this module
 pub fn init(boot_info: &'static BootInfo) {
     unsafe {
         PHYSICAL_MEMORY_OFFSET = Some(boot_info.physical_memory_offset as usize);
+        OFFSET_PAGE_TABLE = Some(OffsetPageTable::new(
+            load_page_table(cur_pgd_phyaddr()),
+            VirtAddr::new(boot_info.physical_memory_offset),
+        ));
     }
 }
 
@@ -27,11 +33,11 @@ pub unsafe fn phys_to_virt(physical_address: usize) -> usize {
 }
 
 pub unsafe fn virt_to_phys(virtual_address: usize) -> Option<usize> {
-    inner_virt_to_phys(
-        VirtAddr::new(virtual_address as u64),
-        VirtAddr::new(PHYSICAL_MEMORY_OFFSET.unwrap() as u64),
-    )
-    .map(|addr| addr.as_u64() as usize)
+    OFFSET_PAGE_TABLE
+        .as_ref()
+        .unwrap()
+        .translate_addr(VirtAddr::new(virtual_address as u64))
+        .map(|addr| addr.as_u64() as usize)
 }
 
 fn cur_pgd() -> PhysFrame {
