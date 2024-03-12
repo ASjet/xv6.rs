@@ -10,13 +10,14 @@ pub const BUFFER_WIDTH: usize = 80;
 pub const BUFFER_HEIGHT: usize = 25;
 pub const INVALID_CHAR: u8 = 0xfe;
 
-const BUFFER_ADDR: isize = 0xb8000;
+const BUFFER_ADDR: usize = 0xb8000;
+pub const DEFAULT_COLOR: ColorCode = ColorCode::new(Color::White, Color::Black);
 
 type Register = u64;
 
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> =
-        Mutex::new(Writer::new(ColorCode::new(Color::White, Color::Black)));
+        Mutex::new(unsafe { Writer::new(DEFAULT_COLOR, BUFFER_ADDR) });
 }
 
 #[doc(hidden)]
@@ -166,12 +167,12 @@ impl Writer {
     /// # Returns
     ///
     /// A new `Writer` instance.
-    pub fn new(color: ColorCode) -> Writer {
+    pub unsafe fn new(color: ColorCode, buffer_addr: usize) -> Writer {
         Writer {
             row_pos: 0,
             col_pos: 0,
             color,
-            buf: unsafe { &mut *(BUFFER_ADDR as *mut Buffer) },
+            buf: unsafe { &mut *(buffer_addr as *mut Buffer) },
         }
     }
 
