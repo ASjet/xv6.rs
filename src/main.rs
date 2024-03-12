@@ -54,13 +54,22 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         println!("VirtualAddr({:#x}) -> PhysAddr({:x?})", virt, phys);
     }
 
-    // let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr(), phys_offset) };
+    let mut test_writer = unsafe {
+        vga::Writer::new(
+            vga::ColorCode::new(Color::Black, Color::White),
+            vm::map_virt_to_phys(0, 0xb8000).unwrap(),
+        )
+    };
+    test_writer.set_pos(20, 0);
+    test_writer.write_str("test from mapped vga buffer\n");
+
+    // let l4_table = unsafe { vm::load_page_table(vm::cur_pgd_phyaddr()) };
     // for (i, entry) in l4_table.iter().enumerate() {
     //     if !entry.is_unused() {
     //         dmesg!("L4 Entry {}: {:?}", i, entry);
 
     //         let phys = entry.frame().unwrap().start_address().as_u64() as usize;
-    //         let l3_table = unsafe { vm::load_page_table(phys, phys_offset) };
+    //         let l3_table = unsafe { vm::load_page_table(phys) };
     //         for (i, entry) in l3_table.iter().enumerate() {
     //             if !entry.is_unused() {
     //                 dmesg!("  L3 Entry {}: {:?}", i, entry);
