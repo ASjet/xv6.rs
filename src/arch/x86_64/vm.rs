@@ -1,10 +1,14 @@
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use bootloader::BootInfo;
+use x86_64::structures::paging::mapper::MapToError;
 use x86_64::structures::paging::{
     FrameAllocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame,
     Size4KiB, Translate,
 };
 use x86_64::{PhysAddr, VirtAddr};
+
+pub const HEAP_START: usize = 0x4444_4444_0000;
+pub const HEAP_SIZE: usize = 100 * 1024;
 
 static mut PHYSICAL_MEMORY_OFFSET: Option<usize> = None;
 static mut OFFSET_PAGE_TABLE: Option<OffsetPageTable<'static>> = None;
@@ -19,6 +23,13 @@ pub fn init(boot_info: &'static BootInfo) {
             VirtAddr::new(boot_info.physical_memory_offset),
         ));
         FRAME_ALLOCATOR = Some(BootInfoFrameAllocator::init(&boot_info.memory_map));
+        init_heap(
+            HEAP_START,
+            HEAP_START + HEAP_SIZE,
+            OFFSET_PAGE_TABLE.as_mut().unwrap(),
+            FRAME_ALLOCATOR.as_mut().unwrap(),
+        )
+        .expect("heap initialization failed");
     }
 }
 
@@ -139,4 +150,28 @@ pub unsafe fn map_virt_to_phys(virtual_address: usize, physical_address: usize) 
     .ok()?
     .flush();
     Some(align_virt_address)
+}
+
+// Map pages within the heap range to physical frames
+pub fn init_heap(
+    heap_start: usize,
+    heap_end: usize,
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+) -> Result<(), MapToError<Size4KiB>> {
+    let page_range = {
+        let start_page = Page::containing_address(VirtAddr::new(heap_start as u64));
+        let end_page = Page::containing_address(VirtAddr::new(heap_end as u64 - 1u64));
+        Page::range_inclusive(start_page, end_page)
+    };
+
+    for page in page_range {
+        let frame = frame_allocator
+            .allocate_frame()
+            .ok_or(MapToError::FrameAllocationFailed)?;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
+    }
+
+    Ok(())
 }

@@ -8,9 +8,12 @@
 #![allow(unused_imports)]
 
 pub mod arch;
+pub mod mem;
 pub mod print;
 pub mod test;
 pub mod vga;
+
+extern crate alloc;
 
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
@@ -20,6 +23,7 @@ use bootloader::entry_point;
 
 pub fn init(boot_info: &'static BootInfo) {
     arch::init(boot_info);
+    mem::alloc::init(arch::vm::HEAP_START, arch::vm::HEAP_SIZE);
 }
 
 #[cfg(test)]

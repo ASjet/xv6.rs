@@ -6,6 +6,12 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::String;
+use alloc::vec;
 use bootloader::entry_point;
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
@@ -81,6 +87,18 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // unsafe {
     //     *(0xdeadbeef as *mut u8) = 42;
     // };
+
+    let s = Box::new("str from heap!");
+    println!("{} at {:p}", s, s);
+
+    let str = String::from("and String from heap!");
+    println!("{} at {:p}", str, str.as_str());
+
+    let v = vec!["vec", "from", "heap", "!"];
+    println!("{:?} at {:p}", v, v.as_slice());
+
+    let rc = Rc::new(Box::new("and rc from heap!"));
+    println!("{:?} at {:p}", rc.clone(), rc);
 
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
