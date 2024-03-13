@@ -23,6 +23,7 @@ use bootloader::entry_point;
 
 pub fn init(boot_info: &'static BootInfo) {
     arch::init(boot_info);
+    mem::alloc::init(arch::vm::HEAP_START, arch::vm::HEAP_SIZE);
 }
 
 #[cfg(test)]

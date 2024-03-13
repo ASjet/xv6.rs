@@ -3,17 +3,13 @@ use core::{
     ptr::null_mut,
 };
 
+use linked_list_allocator::LockedHeap;
+
 #[global_allocator]
-static ALLOCATOR: Dummy = Dummy;
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub struct Dummy;
-
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        null_mut()
-    }
-
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc should be never called")
+pub fn init(heap_start: usize, heap_size: usize) {
+    unsafe {
+        ALLOCATOR.lock().init(heap_start, heap_size);
     }
 }
