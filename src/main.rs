@@ -6,6 +6,9 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
 use bootloader::entry_point;
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
@@ -81,6 +84,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // unsafe {
     //     *(0xdeadbeef as *mut u8) = 42;
     // };
+
+    let x = Box::new(42);
 
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default

@@ -8,9 +8,12 @@
 #![allow(unused_imports)]
 
 pub mod arch;
+pub mod mem;
 pub mod print;
 pub mod test;
 pub mod vga;
+
+extern crate alloc;
 
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
