@@ -1,9 +1,9 @@
 #![no_std] // don't link the Rust standard library
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
+#![feature(abi_x86_interrupt)]
 #![test_runner(crate::test::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-#![feature(abi_x86_interrupt)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 

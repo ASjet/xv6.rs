@@ -7,6 +7,8 @@ use x86_64::structures::paging::{
 };
 use x86_64::{PhysAddr, VirtAddr};
 
+use crate::dmesg;
+
 pub const HEAP_START: usize = 0x4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024;
 
@@ -18,10 +20,15 @@ static mut FRAME_ALLOCATOR: Option<BootInfoFrameAllocator> = None;
 pub fn init(boot_info: &'static BootInfo) {
     unsafe {
         PHYSICAL_MEMORY_OFFSET = Some(boot_info.physical_memory_offset as usize);
+        dmesg!(
+            "physical memory offset: {:#x}",
+            PHYSICAL_MEMORY_OFFSET.unwrap()
+        );
         OFFSET_PAGE_TABLE = Some(OffsetPageTable::new(
             load_page_table(cur_pgd_phyaddr()),
             VirtAddr::new(boot_info.physical_memory_offset),
         ));
+        dmesg!("offset page table initialized");
         FRAME_ALLOCATOR = Some(BootInfoFrameAllocator::init(&boot_info.memory_map));
         init_heap(
             HEAP_START,
@@ -30,6 +37,7 @@ pub fn init(boot_info: &'static BootInfo) {
             FRAME_ALLOCATOR.as_mut().unwrap(),
         )
         .expect("heap initialization failed");
+        dmesg!("heap initialized")
     }
 }
 
