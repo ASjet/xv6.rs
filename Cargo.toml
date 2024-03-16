@@ -12,6 +12,13 @@ edition = "2021"
 [profile.release]
 panic = "abort" # disable stack unwinding on panic
 
+[workspace]
+members = ["crates/x86_64"]
+resolver = "2"
+
+[workspace.dependencies]
+x86_64 = { path = "crates/x86_64" }
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.bootimage]
@@ -48,7 +55,7 @@ bench = false
 bootloader = { version = "0.9", features = ["map_physical_memory"] }
 volatile = "0.2.6"
 spin = "0.5.2"
-x86_64 = "0.15.0"
+x86_64.workspace = true
 uart_16550 = "0.2.0"
 pic8259 = "0.10.1"
 int-enum = "1.0.1"
