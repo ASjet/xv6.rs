@@ -20,6 +20,12 @@ pub fn halt() -> ! {
 }
 
 #[inline]
+pub fn getcpu() -> u64 {
+    let ebx = unsafe { core::arch::x86_64::__cpuid(1).ebx };
+    ((ebx >> 24) & 0xff) as u64
+}
+
+#[inline]
 pub fn scan_code() -> u8 {
     PortIndex::ScanCode.read()
 }

@@ -104,6 +104,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // named `_start` by default
     println!("Hello, World!\ninteger: {}, float: {}", 42, 3.14);
 
+    dmesg!("running on cpu {}", arch::getcpu());
+
     // panic!("Some panic message");
 
     arch::halt();
