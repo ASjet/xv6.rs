@@ -9,12 +9,13 @@ use spin;
 use x86_64::instructions::{self};
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
+const PIT_INTERVAL: f32 = 18.2;
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 pub static mut TIMER_TICKS: u64 = 0;
 
 pub fn ticks() -> f32 {
-    unsafe { TIMER_TICKS as f32 / 10.0 }
+    unsafe { TIMER_TICKS as f32 / PIT_INTERVAL }
 }
 
 lazy_static! {
