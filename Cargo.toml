@@ -22,6 +22,11 @@ x86_64 = { path = "crates/x86_64" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package.metadata.bootimage]
+run-args = [
+    # enable the serial device and redirect the output to the stdio
+    "-serial",
+    "stdio",
+]
 test-args = [
     # map the device isa-debug-exit I/O port at address 0xf4 with port size 0x04 bytes
     "-device",
