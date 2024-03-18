@@ -21,7 +21,18 @@ pub fn halt() -> ! {
 
 #[inline]
 pub fn getcpu() -> u64 {
-    let ebx = unsafe { core::arch::x86_64::__cpuid(1).ebx };
+    // let ebx = unsafe { core::arch::x86_64::__cpuid(1).ebx };
+    let mut ebx: u64;
+    unsafe {
+        core::arch::asm!(
+            "mov {0:r}, rbx",
+            "cpuid",
+            "xchg {0:r}, rbx",
+            out(reg) ebx,
+            in("rax") 1,
+            options(nostack, preserves_flags),
+        );
+    }
     ((ebx >> 24) & 0xff) as u64
 }
 

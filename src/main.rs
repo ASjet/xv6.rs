@@ -27,38 +27,8 @@ entry_point!(kernel_main);
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
     xv6::init(boot_info);
 
-    dmesg!(
-        "physical memory offset: {:#x}",
-        boot_info.physical_memory_offset
-    );
-    for &region in boot_info.memory_map.iter() {
-        dmesg!(
-            "start: {:#x}, end: {:#x}, type: {:?}",
-            region.range.start_addr(),
-            region.range.end_addr(),
-            region.region_type
-        );
-    }
-
     #[cfg(test)]
     test_main();
-
-    let addresses = [
-        // the identity-mapped vga buffer page
-        0xb8000,
-        // some code page
-        0x201008,
-        // some stack page
-        0x0100_0020_1a10,
-        // virtual address mapped to physical address 0
-        boot_info.physical_memory_offset,
-    ];
-
-    for &address in &addresses {
-        let virt = address as usize;
-        let phys = unsafe { vm::virt_to_phys(virt) };
-        println!("VirtualAddr({:#x}) -> PhysAddr({:x?})", virt, phys);
-    }
 
     let mut test_writer = unsafe {
         vga::Writer::new(
