@@ -2,13 +2,24 @@
 #![no_main]
 
 use core::panic::PanicInfo;
+use riscv_rt::entry;
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-    loop {}
+fn wfi() {
+    unsafe { core::arch::asm!("wfi") };
+}
+
+fn halt() -> ! {
+    loop {
+        wfi();
+    }
+}
+
+#[entry]
+fn main() -> ! {
+    halt();
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    halt();
 }
