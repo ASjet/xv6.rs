@@ -13,43 +13,22 @@ edition = "2021"
 panic = "abort" # disable stack unwinding on panic
 
 [workspace]
-members = ["crates/x86_64"]
+members = ["crates/rv64"]
+default-members = ["."]
 resolver = "2"
 
 [workspace.dependencies]
-x86_64 = { path = "crates/x86_64" }
+rv64 = { path = "crates/rv64" }
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[package.metadata.bootimage]
-run-args = [
-    # enable the serial device and redirect the output to the stdio
-    "-serial",
-    "stdio",
-]
-test-args = [
-    # map the device isa-debug-exit I/O port at address 0xf4 with port size 0x04 bytes
-    "-device",
-    "isa-debug-exit,iobase=0xf4,iosize=0x04",
-    # enable the serial device and redirect the output to the stdio
-    "-serial",
-    "stdio",
-    # disable display vga window when running tests
-    "-display",
-    "none",
-]
-test-success-exit-code = 33 # specify success exit code `(0x10 << 1) | 1`(33)
-test-timeout = 300 # specify timeout in seconds
-
-[package.metadata.bootloader]
-physical-memory-offset = "0xfffff00000000000" # 1 tib
-
-[[test]]
-name = "should_panic"
-harness = false
-[[test]]
-name = "stack_overflow"
-harness = false
+# [[test]]
+# name = "should_panic"
+# harness = false
+# [[test]]
+# name = "stack_overflow"
+# harness = false
 
 [[bin]]
 name = "xv6"
@@ -57,16 +36,4 @@ name = "xv6"
 bench = false
 
 [dependencies]
-bootloader = { version = "0.9", features = ["map_physical_memory"] }
-volatile = "0.2.6"
-spin = "0.5.2"
-x86_64.workspace = true
-uart_16550 = "0.2.0"
-pic8259 = "0.10.1"
-int-enum = "1.0.1"
-pc-keyboard = "0.5.0"
-linked_list_allocator = "0.10.2"
-
-[dependencies.lazy_static]
-version = "1.0"
-features = ["spin_no_std"]
+riscv-rt = "0.12.2"

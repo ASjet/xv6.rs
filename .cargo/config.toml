@@ -1,8 +1,8 @@
 [build]
-target = "x86_64-xv6.json"
+target = "riscv64gc-unknown-none-elf"
 
-[target.'cfg(target_os = "xv6")']
-runner = "bootimage runner"
+[target.riscv64gc-unknown-none-elf]
+rustflags = ["-Clink-arg=-Tmemory.x", "-Clink-arg=-Tlink.x"]
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
