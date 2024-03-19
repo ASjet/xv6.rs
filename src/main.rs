@@ -1,6 +1,9 @@
 #![no_std]
 #![no_main]
 
+mod print;
+mod sbi;
+
 use core::panic::PanicInfo;
 use riscv_rt::entry;
 
@@ -16,6 +19,8 @@ fn halt() -> ! {
 
 #[entry]
 fn main() -> ! {
+    println!("\nHello, world!\n");
+
     halt();
 }
 
