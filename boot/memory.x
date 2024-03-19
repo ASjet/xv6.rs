@@ -1,7 +1,7 @@
 MEMORY
 {
     /* 0x80000000 is where QEMU's -kernel jumps with -bios none */
-    RAM : ORIGIN = 0x80200000, LENGTH = 16M
+    RAM : ORIGIN = 0x80000000, LENGTH = 16M
 }
 
 REGION_ALIAS("REGION_TEXT", RAM);

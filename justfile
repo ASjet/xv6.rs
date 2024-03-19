@@ -11,7 +11,7 @@ kernel:
 
 run *EXTRA_ARGS: kernel
     qemu-system-riscv64 {{EXTRA_ARGS}} -M virt -m 2G -nographic \
-    -kernel {{kernel_path}}
+    -kernel {{kernel_path}} -bios none
 
 debug port="1234": (run "-gdb tcp::" + port + " -S")
 gdb: kernel
