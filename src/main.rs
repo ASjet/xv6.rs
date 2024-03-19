@@ -4,6 +4,7 @@
 
 use core::panic::PanicInfo;
 use riscv_rt::entry;
+use xv6::println;
 
 #[inline]
 fn halt() -> ! {
@@ -16,7 +17,7 @@ fn halt() -> ! {
 /// while other harts will be in `wfi` with default `_mp_hook` implementation.
 #[entry]
 fn main() -> ! {
-    // println!("\nHello, world!\n");
+    println!("hello, world!\n");
     halt();
 }
 

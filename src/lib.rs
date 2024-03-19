@@ -2,4 +2,6 @@
 #![no_main]
 #![feature(riscv_ext_intrinsics)]
 
-mod arch;
+pub mod arch;
+pub mod io;
+pub mod print;
