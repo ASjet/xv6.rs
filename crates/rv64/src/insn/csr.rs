@@ -1,5 +1,6 @@
 use super::{Mask, Register};
 use core::arch::asm;
+use int_enum::IntEnum;
 
 macro_rules! csr_reg {
     ($reg:ident) => {
@@ -22,25 +23,13 @@ macro_rules! csr_reg {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, IntEnum)]
 #[repr(u8)]
 pub enum PrivilegeLevel {
     U = 0b00,
     S = 0b01,
-    R = 0b10, // Reserved
+    /*  0b10 is reserved */
     M = 0b11,
-}
-
-impl PrivilegeLevel {
-    fn from_u64(x: u64) -> PrivilegeLevel {
-        match x & 0b11 {
-            0b00 => PrivilegeLevel::U,
-            0b01 => PrivilegeLevel::S,
-            0b10 => PrivilegeLevel::R,
-            0b11 => PrivilegeLevel::M,
-            _ => unreachable!(),
-        }
-    }
 }
 
 csr_reg!(mhartid);
@@ -66,7 +55,7 @@ pub const MSTATUS_SIE: Mask = Mask::new(1, 1); // supervisor-mode interrupt enab
 
 #[inline]
 pub fn r_mstatus_mpp() -> PrivilegeLevel {
-    PrivilegeLevel::from_u64(mstatus.read_mask(MSTATUS_MPP))
+    PrivilegeLevel::try_from(mstatus.read_mask(MSTATUS_MPP) as u8 & 0b11).unwrap()
 }
 
 #[inline]
