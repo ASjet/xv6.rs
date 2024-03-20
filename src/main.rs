@@ -4,7 +4,7 @@
 
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use rv64::insn::Register;
+use rv64::insn::{csr, reg, Register};
 use xv6::println;
 
 extern "C" {
@@ -21,7 +21,7 @@ fn halt() -> ! {
 }
 
 fn cpuid() -> u64 {
-    rv64::insn::csr::mhartid.read()
+    reg::tp.read()
 }
 
 /// This will only be called on hart 0,
@@ -49,6 +49,8 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[export_name = "_mp_hook"]
 pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
-    println!("{}\n", cpuid());
+    assert_eq!(hartid as u64, csr::mhartid.read());
+    unsafe { reg::tp.write(hartid as u64) };
+    println!("{}\n", hartid);
     hartid == 0
 }
