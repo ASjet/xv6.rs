@@ -1,22 +1,23 @@
-use super::Mask;
+use super::{Mask, Register};
 use core::arch::asm;
 
-macro_rules! csrr {
-    ($name:ident, $reg:ident) => {
-        #[inline]
-        pub fn $name() -> u64 {
-            let r: u64;
-            unsafe { asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
-            r
-        }
-    };
-}
+macro_rules! csr_reg {
+    ($reg:ident) => {
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
 
-macro_rules! csrw {
-    ($name:ident, $reg:ident) => {
-        #[inline]
-        pub unsafe fn $name(x: u64) {
-            unsafe { asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+        impl Register for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe { asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+            }
         }
     };
 }
@@ -42,9 +43,10 @@ impl PrivilegeLevel {
     }
 }
 
-csrr!(r_mhartid, mhartid);
+csr_reg!(mhartid);
 
-/// mstatus masks
+// Machine mode status
+csr_reg!(mstatus);
 pub const MSTATUS_TSR: Mask = Mask::new(1, 22);
 pub const MSTATUS_TW: Mask = Mask::new(1, 21);
 pub const MSTATUS_TVM: Mask = Mask::new(1, 20);
@@ -62,20 +64,18 @@ pub const MSTATUS_SPIE: Mask = Mask::new(1, 5);
 pub const MSTATUS_MIE: Mask = Mask::new(1, 3); // machine-mode interrupt enable.
 pub const MSTATUS_SIE: Mask = Mask::new(1, 1); // supervisor-mode interrupt enable.
 
-csrr!(r_mstatus, mstatus);
-csrw!(w_mstatus, mstatus);
-
 #[inline]
 pub fn r_mstatus_mpp() -> PrivilegeLevel {
-    PrivilegeLevel::from_u64(MSTATUS_MPP.get(r_mstatus()))
+    PrivilegeLevel::from_u64(mstatus.read_mask(MSTATUS_MPP))
 }
 
 #[inline]
 pub unsafe fn w_mstatus_mpp(l: PrivilegeLevel) {
-    unsafe { w_mstatus(MSTATUS_MPP.set(r_mstatus(), l as u64)) };
+    unsafe { mstatus.write_mask(MSTATUS_MPP, l as u64) }
 }
 
-/// sstatus masks
+// Supervisor mode status
+csr_reg!(sstatus);
 pub const SSTATUS_SD: Mask = Mask::new(1, 63);
 pub const SSTATUS_UXL: Mask = Mask::new(2, 32);
 pub const SSTATUS_MXR: Mask = Mask::new(1, 19);
@@ -88,10 +88,8 @@ pub const SSTATUS_UBE: Mask = Mask::new(1, 6);
 pub const SSTATUS_SPIE: Mask = Mask::new(1, 5);
 pub const SSTATUS_SIE: Mask = Mask::new(1, 1); // supervisor-mode interrupt enable.
 
-csrr!(r_sstatus, sstatus);
-csrw!(w_sstatus, sstatus);
-
-/// mip(Machine Interrupt Pending) masks
+// Machine Interrupt Pending
+csr_reg!(mip);
 pub const MIP_MEIP: Mask = Mask::new(1, 11); // external
 pub const MIP_SEIP: Mask = Mask::new(1, 9); // external
 pub const MIP_MTIP: Mask = Mask::new(1, 7); // timer
@@ -99,49 +97,34 @@ pub const MIP_STIP: Mask = Mask::new(1, 5); // timer
 pub const MIP_MSIP: Mask = Mask::new(1, 3); // software
 pub const MIP_SSIP: Mask = Mask::new(1, 1); // software
 
-csrr!(r_mip, mip);
-csrw!(w_mip, mip);
-
-/// sip(Supervisor Interrupt Pending) masks
+// Supervisor Interrupt Pending
+csr_reg!(sip);
 pub const SIP_SEIP: Mask = Mask::new(1, 9); // external
 pub const SIP_STIP: Mask = Mask::new(1, 5); // timer
 pub const SIP_SSIP: Mask = Mask::new(1, 1); // software
 
-csrr!(r_sip, sip);
-csrw!(w_sip, sip);
-
-/// mie(Machine Interrupt Enable) masks
+// Machine Interrupt Enable
+csr_reg!(mie);
 pub const MIE_SEIE: Mask = Mask::new(1, 11); // external
 pub const MIE_MTIE: Mask = Mask::new(1, 9); // timer
 pub const MIE_STIE: Mask = Mask::new(1, 7); // timer
 pub const MIE_MSIE: Mask = Mask::new(1, 5); // software
 pub const MIE_SSIE: Mask = Mask::new(1, 3); // software
 
-csrr!(r_mie, mie);
-csrw!(w_mie, mie);
-
-/// sie(Supervisor Interrupt Enable) masks
+// Supervisor Interrupt Enable
+csr_reg!(sie);
 pub const SIE_SEIE: Mask = Mask::new(1, 9); // external
 pub const SIE_STIE: Mask = Mask::new(1, 5); // timer
 pub const SIE_SSIE: Mask = Mask::new(1, 1); // software
 
-csrr!(r_sie, sie);
-csrw!(w_sie, sie);
+csr_reg!(mepc);
 
-csrr!(r_mepc, mepc);
-csrw!(w_mepc, mepc);
+csr_reg!(sepc);
 
-csrr!(r_sepc, sepc);
-csrw!(w_sepc, sepc);
+csr_reg!(medeleg);
 
-csrr!(r_medeleg, medeleg);
-csrw!(w_medeleg, medeleg);
+csr_reg!(mideleg);
 
-csrr!(r_mideleg, mideleg);
-csrw!(w_mideleg, mideleg);
+csr_reg!(mtvec);
 
-csrr!(r_mtvec, mtvec);
-csrw!(w_mtvec, mtvec);
-
-csrr!(r_stvec, stvec);
-csrw!(w_stvec, stvec);
+csr_reg!(stvec);

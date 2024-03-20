@@ -4,6 +4,7 @@
 
 use core::panic::PanicInfo;
 use riscv_rt::entry;
+use rv64::insn::Register;
 use xv6::println;
 
 extern "C" {
@@ -20,7 +21,7 @@ fn halt() -> ! {
 }
 
 fn cpuid() -> u64 {
-    rv64::insn::csr::r_mhartid()
+    rv64::insn::csr::mhartid.read()
 }
 
 /// This will only be called on hart 0,

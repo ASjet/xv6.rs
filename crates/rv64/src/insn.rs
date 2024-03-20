@@ -39,3 +39,23 @@ impl core::fmt::Debug for Mask {
         write!(f, "\n{BIT_INDEX}\n{:064b}\n", self.mask)
     }
 }
+
+pub trait Register {
+    /// Read the value of the register.
+    fn read(&self) -> u64;
+
+    /// Write the value to the register.
+    unsafe fn write(&self, value: u64);
+
+    /// Read the value of the register at the mask.
+    #[inline]
+    fn read_mask(&self, mask: Mask) -> u64 {
+        mask.get(self.read())
+    }
+
+    /// Write the value of the register at the mask.
+    #[inline]
+    unsafe fn write_mask(&self, mask: Mask, value: u64) {
+        self.write(mask.set(self.read(), value))
+    }
+}
