@@ -25,6 +25,11 @@ impl Mask {
     pub fn get(&self, target: u64) -> u64 {
         (target & self.mask) >> self.shift
     }
+
+    #[inline]
+    pub const fn mask(&self) -> u64 {
+        self.mask
+    }
 }
 
 impl core::fmt::Display for Mask {

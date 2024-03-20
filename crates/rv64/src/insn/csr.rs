@@ -156,3 +156,48 @@ csr_reg!(
     /// Supervisor Trap-Vector Base Address low two bits are mode.
     stvec
 );
+
+csr_reg!(pmpcfg0);
+
+csr_reg!(pmpaddr0);
+
+/// use riscv's sv39 page table scheme.
+pub const SATP_SV39: Mask = Mask::new(1, 63);
+pub const fn make_satp(pagetable: u64) -> u64 {
+    SATP_SV39.mask() | (pagetable >> 12)
+}
+csr_reg!(
+    /// Supervisor address translation and protection;
+    /// holds the address of the page table.
+    satp
+);
+
+csr_reg!(
+    /// Machine-mode Scratch register, for early trap handler
+    mscratch
+);
+
+csr_reg!(
+    /// Supervisor Scratch register, for early trap handler
+    sscratch
+);
+
+csr_reg!(
+    /// Supervisor Trap Cause
+    scause
+);
+
+csr_reg!(
+    /// Supervisor Trap Value
+    stval
+);
+
+csr_reg!(
+    /// Machine-mode Counter-Enable
+    mcounteren
+);
+
+csr_reg!(
+    /// machine-mode cycle counter
+    time
+);
