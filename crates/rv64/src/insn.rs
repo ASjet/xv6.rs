@@ -1,4 +1,7 @@
+use core::arch::asm;
+
 pub mod csr;
+pub mod reg;
 
 const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
@@ -104,4 +107,9 @@ pub trait Register {
     unsafe fn clear_mask(&self, mask: Mask) {
         self.write(mask.clear_all(self.read()))
     }
+}
+
+#[inline]
+pub fn sfence_vma() {
+    unsafe { asm!("sfence.vma zero, zero") };
 }
