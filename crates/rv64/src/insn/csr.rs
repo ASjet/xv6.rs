@@ -42,6 +42,19 @@ csr_reg!(
     /// Machine-mode Status Register
     mstatus
 );
+impl mstatus {
+    /// Read mstatus.MPP
+    #[inline]
+    pub fn r_mpp(&self) -> PrivilegeLevel {
+        PrivilegeLevel::try_from(self.read_mask(MSTATUS_MPP) as u8 & 0b11).unwrap()
+    }
+
+    /// Write mstatus.MPP
+    #[inline]
+    pub unsafe fn w_mpp(&self, l: PrivilegeLevel) {
+        unsafe { self.write_mask(MSTATUS_MPP, l as u64) }
+    }
+}
 pub const MSTATUS_TSR: Mask = Mask::new(1, 22);
 pub const MSTATUS_TW: Mask = Mask::new(1, 21);
 pub const MSTATUS_TVM: Mask = Mask::new(1, 20);
@@ -58,18 +71,6 @@ pub const MSTATUS_UBE: Mask = Mask::new(1, 6);
 pub const MSTATUS_SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
 pub const MSTATUS_MIE: Mask = Mask::new(1, 3); // Machine-mode Interrupt Enable
 pub const MSTATUS_SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
-
-/// Read mstatus.MPP
-#[inline]
-pub fn r_mstatus_mpp() -> PrivilegeLevel {
-    PrivilegeLevel::try_from(mstatus.read_mask(MSTATUS_MPP) as u8 & 0b11).unwrap()
-}
-
-/// Write mstatus.MPP
-#[inline]
-pub unsafe fn w_mstatus_mpp(l: PrivilegeLevel) {
-    unsafe { mstatus.write_mask(MSTATUS_MPP, l as u64) }
-}
 
 csr_reg!(
     /// Supervisor Status Register
