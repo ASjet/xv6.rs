@@ -46,7 +46,7 @@ impl mstatus {
     /// Read mstatus.MPP
     #[inline]
     pub fn r_mpp(&self) -> PrivilegeLevel {
-        PrivilegeLevel::try_from(self.read_mask(MSTATUS_MPP) as u8 & 0b11).unwrap()
+        PrivilegeLevel::try_from(self.read_mask(MSTATUS_MPP) as u8).unwrap()
     }
 
     /// Write mstatus.MPP

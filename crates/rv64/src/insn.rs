@@ -4,6 +4,7 @@ const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9
 
 pub struct Mask {
     mask: u64,
+    width: u64,
     shift: u64,
 }
 
@@ -12,23 +13,51 @@ impl Mask {
     pub const fn new(bit_width: u64, shift: u64) -> Mask {
         Mask {
             mask: ((1 << bit_width) - 1) << shift,
+            width: bit_width,
             shift,
         }
     }
 
+    /// Set the value at the mask in the target.
     #[inline]
     pub fn set(&self, target: u64, value: u64) -> u64 {
         (target & !self.mask) | (value << self.shift)
     }
 
+    /// Set all bits at the mask in the target.
+    #[inline]
+    pub fn set_all(&self, target: u64) -> u64 {
+        target | self.mask
+    }
+
+    /// Clear all bits at the mask in the target.
+    #[inline]
+    pub fn clear_all(&self, target: u64) -> u64 {
+        target & !self.mask
+    }
+
+    /// Get the value at the mask in the target.
     #[inline]
     pub fn get(&self, target: u64) -> u64 {
         (target & self.mask) >> self.shift
     }
 
+    /// Get the mask value
     #[inline]
     pub const fn mask(&self) -> u64 {
         self.mask
+    }
+
+    /// Get the mask shift
+    #[inline]
+    pub const fn shift(&self) -> u64 {
+        self.shift
+    }
+
+    /// Get the mask width
+    #[inline]
+    pub const fn width(&self) -> u64 {
+        self.width
     }
 }
 
@@ -62,5 +91,17 @@ pub trait Register {
     #[inline]
     unsafe fn write_mask(&self, mask: Mask, value: u64) {
         self.write(mask.set(self.read(), value))
+    }
+
+    /// Set all bits at the mask in the register.
+    #[inline]
+    unsafe fn set_mask(&self, mask: Mask) {
+        self.write(mask.set_all(self.read()))
+    }
+
+    /// Clear all bits at the mask in the register.
+    #[inline]
+    unsafe fn clear_mask(&self, mask: Mask) {
+        self.write(mask.clear_all(self.read()))
     }
 }
