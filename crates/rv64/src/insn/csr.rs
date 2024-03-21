@@ -1,8 +1,7 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::csr_reg_rw;
-use core::arch::asm;
+use crate::{csr_reg_ro, csr_reg_rw};
 
-csr_reg_rw!(
+csr_reg_ro!(
     /// Current hart id
     mhartid
 );
@@ -151,12 +150,12 @@ csr_reg_rw!(
     sscratch
 );
 
-csr_reg_rw!(
+csr_reg_ro!(
     /// Supervisor Trap Cause
     scause
 );
 
-csr_reg_rw!(
+csr_reg_ro!(
     /// Supervisor Trap Value
     stval
 );
@@ -166,7 +165,7 @@ csr_reg_rw!(
     mcounteren
 );
 
-csr_reg_rw!(
+csr_reg_ro!(
     /// machine-mode cycle counter
     time
 );

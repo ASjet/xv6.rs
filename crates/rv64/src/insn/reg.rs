@@ -1,6 +1,4 @@
-use super::RegisterRW;
 use crate::mv_reg_rw;
-use core::arch::asm;
 
 mv_reg_rw!(
     /// Stack pointer
