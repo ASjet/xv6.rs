@@ -1,4 +1,14 @@
-use crate::mv_reg_rw;
+use crate::{csr_reg_ro, mv_reg_rw};
+
+csr_reg_ro!(
+    /// Time counter
+    time
+);
+
+csr_reg_ro!(
+    /// Cycle counter
+    cycle
+);
 
 mv_reg_rw!(
     /// Stack pointer

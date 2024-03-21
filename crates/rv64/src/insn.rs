@@ -1,8 +1,23 @@
 use core::arch::asm;
 use int_enum::IntEnum;
 
-pub mod csr;
-pub mod reg;
+/// Machine Privileged Level
+pub mod m;
+
+/// Supervisor Privileged Level
+pub mod s;
+
+/// Unprivileged Level
+pub mod u;
+
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum PrivilegeLevel {
+    U = 0b00,
+    S = 0b01,
+    /*  0b10 is reserved */
+    M = 0b11,
+}
 
 const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
@@ -76,15 +91,6 @@ impl core::fmt::Debug for Mask {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "\n{BIT_INDEX}\n{:064b}\n", self.mask)
     }
-}
-
-#[derive(Debug, IntEnum)]
-#[repr(u8)]
-pub enum PrivilegeLevel {
-    U = 0b00,
-    S = 0b01,
-    /*  0b10 is reserved */
-    M = 0b11,
 }
 
 pub trait RegisterRW {
