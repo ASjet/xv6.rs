@@ -147,13 +147,54 @@ macro_rules! mv_reg_rw {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
 
             #[inline]
             unsafe fn write(&self, x: u64) {
-                unsafe { core::arch::asm!(concat!("mv ", stringify!($reg), ", {}"), in(reg) x) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv ", stringify!($reg), ", {}"),
+                        in(reg) x
+                    )
+                };
+            }
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv ", stringify!($reg), ", {}"),
+                        in(reg) x,
+                        options($($options),*)
+                    )
+                };
             }
         }
     };
@@ -170,7 +211,32 @@ macro_rules! mv_reg_ro {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
+                r
+            }
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
                 r
             }
         }
@@ -188,13 +254,54 @@ macro_rules! csr_reg_rw {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
 
             #[inline]
             unsafe fn write(&self, x: u64) {
-                unsafe { core::arch::asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrw ", stringify!($reg), ", {}"),
+                        in(reg) x
+                    )
+                };
+            }
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrw ", stringify!($reg), ", {}"),
+                        in(reg) x,
+                        options($($options),*)
+                    )
+                };
             }
         }
     };
@@ -211,9 +318,52 @@ macro_rules! csr_reg_ro {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! naked_insn {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub fn $reg() {
+            unsafe { core::arch::asm!(stringify!($reg)) };
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub fn $reg() {
+            unsafe { core::arch::asm!(stringify!($reg), options($($options),*)) };
         }
     };
 }
