@@ -1,7 +1,23 @@
 use core::arch::asm;
+use int_enum::IntEnum;
 
-pub mod csr;
-pub mod reg;
+/// Machine Privileged Level
+pub mod m;
+
+/// Supervisor Privileged Level
+pub mod s;
+
+/// Unprivileged Level
+pub mod u;
+
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum PrivilegeLevel {
+    U = 0b00,
+    S = 0b01,
+    /*  0b10 is reserved */
+    M = 0b11,
+}
 
 const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
@@ -77,7 +93,7 @@ impl core::fmt::Debug for Mask {
     }
 }
 
-pub trait Register {
+pub trait RegisterRW {
     /// Read the value of the register.
     fn read(&self) -> u64;
 
@@ -109,7 +125,95 @@ pub trait Register {
     }
 }
 
-#[inline]
-pub fn sfence_vma() {
-    unsafe { asm!("sfence.vma zero, zero") };
+pub trait RegisterRO {
+    /// Read the value of the register.
+    fn read(&self) -> u64;
+
+    /// Read the value of the register at the mask.
+    #[inline]
+    fn read_mask(&self, mask: Mask) -> u64 {
+        mask.get(self.read())
+    }
+}
+
+#[macro_export]
+macro_rules! mv_reg_rw {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe { core::arch::asm!(concat!("mv ", stringify!($reg), ", {}"), in(reg) x) };
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! mv_reg_ro {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! csr_reg_rw {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe { core::arch::asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! csr_reg_ro {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+        }
+    };
 }
