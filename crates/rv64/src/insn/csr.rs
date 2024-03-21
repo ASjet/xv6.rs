@@ -1,4 +1,4 @@
-use super::{Mask, PrivilegeLevel, Register};
+use super::{Mask, PrivilegeLevel, RegisterRW};
 use crate::csr_reg;
 use core::arch::asm;
 

@@ -87,7 +87,7 @@ pub enum PrivilegeLevel {
     M = 0b11,
 }
 
-pub trait Register {
+pub trait RegisterRW {
     /// Read the value of the register.
     fn read(&self) -> u64;
 
@@ -119,6 +119,17 @@ pub trait Register {
     }
 }
 
+pub trait RegisterRO {
+    /// Read the value of the register.
+    fn read(&self) -> u64;
+
+    /// Read the value of the register at the mask.
+    #[inline]
+    fn read_mask(&self, mask: Mask) -> u64 {
+        mask.get(self.read())
+    }
+}
+
 #[inline]
 pub fn sfence_vma() {
     unsafe { asm!("sfence.vma zero, zero") };
@@ -131,7 +142,7 @@ macro_rules! mv_reg {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl Register for $reg {
+        impl RegisterRW for $reg {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
@@ -154,7 +165,7 @@ macro_rules! csr_reg {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl Register for $reg {
+        impl RegisterRW for $reg {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;

@@ -1,4 +1,4 @@
-use super::Register;
+use super::RegisterRW;
 use crate::mv_reg;
 use core::arch::asm;
 
