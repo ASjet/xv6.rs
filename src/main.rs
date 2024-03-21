@@ -52,5 +52,9 @@ pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
     assert_eq!(hartid as u64, csr::mhartid.read());
     unsafe { reg::tp.write(hartid as u64) };
     println!("{}\n", hartid);
-    hartid == 0
+    if hartid == 0 {
+        return true;
+    } else {
+        halt();
+    }
 }
