@@ -1,15 +1,5 @@
 use crate::{csr_reg_ro, mv_reg_rw};
 
-csr_reg_ro!(
-    /// Time counter
-    time
-);
-
-csr_reg_ro!(
-    /// Cycle counter
-    cycle
-);
-
 mv_reg_rw!(
     /// Stack pointer
     sp
@@ -23,4 +13,38 @@ mv_reg_rw!(
 mv_reg_rw!(
     /// Return address
     ra
+);
+
+/*            Unprivileged Floating-Point CSRs            */
+
+mv_reg_rw!(
+    /// Floating-Point Accrued Exceptions
+    fflags
+);
+
+mv_reg_rw!(
+    /// Floating-Point Dynamic Rounding Mode
+    frm
+);
+
+mv_reg_rw!(
+    /// Floating-Point Control and Status Register(frm+fflags)
+    fcsr
+);
+
+/*            Unprivileged Counter/Timers            */
+
+csr_reg_ro!(
+    /// Cycle counter for RDCYCLE instruction
+    cycle
+);
+
+csr_reg_ro!(
+    /// Time counter for RDTIME instruction
+    time
+);
+
+csr_reg_ro!(
+    /// Instructions-retired counter for RDINSTRET instruction
+    instret
 );
