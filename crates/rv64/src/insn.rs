@@ -167,6 +167,37 @@ macro_rules! mv_reg_rw {
             }
         }
     };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv ", stringify!($reg), ", {}"),
+                        in(reg) x,
+                        options($($options),*)
+                    )
+                };
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -184,6 +215,26 @@ macro_rules! mv_reg_ro {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
                         out(reg) r
+                    )
+                };
+                r
+            }
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
                     )
                 };
                 r
@@ -223,6 +274,37 @@ macro_rules! csr_reg_rw {
             }
         }
     };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRW for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+
+            #[inline]
+            unsafe fn write(&self, x: u64) {
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrw ", stringify!($reg), ", {}"),
+                        in(reg) x,
+                        options($($options),*)
+                    )
+                };
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -246,6 +328,26 @@ macro_rules! csr_reg_ro {
             }
         }
     };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl crate::insn::RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r,
+                        options($($options),*)
+                    )
+                };
+                r
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -255,6 +357,13 @@ macro_rules! naked_insn {
         #[allow(non_camel_case_types)]
         pub fn $reg() {
             unsafe { core::arch::asm!(stringify!($reg)) };
+        }
+    };
+    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub fn $reg() {
+            unsafe { core::arch::asm!(stringify!($reg), options($($options),*)) };
         }
     };
 }
