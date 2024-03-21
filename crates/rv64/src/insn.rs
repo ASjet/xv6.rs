@@ -147,13 +147,23 @@ macro_rules! mv_reg_rw {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
 
             #[inline]
             unsafe fn write(&self, x: u64) {
-                unsafe { core::arch::asm!(concat!("mv ", stringify!($reg), ", {}"), in(reg) x) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv ", stringify!($reg), ", {}"),
+                        in(reg) x
+                    )
+                };
             }
         }
     };
@@ -170,7 +180,12 @@ macro_rules! mv_reg_ro {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mv {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
         }
@@ -188,13 +203,23 @@ macro_rules! csr_reg_rw {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
 
             #[inline]
             unsafe fn write(&self, x: u64) {
-                unsafe { core::arch::asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrw ", stringify!($reg), ", {}"),
+                        in(reg) x
+                    )
+                };
             }
         }
     };
@@ -211,7 +236,12 @@ macro_rules! csr_reg_ro {
             #[inline]
             fn read(&self) -> u64 {
                 let r: u64;
-                unsafe { core::arch::asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                unsafe {
+                    core::arch::asm!(
+                        concat!("csrr {}, ", stringify!($reg)),
+                        out(reg) r
+                    )
+                };
                 r
             }
         }
