@@ -1,8 +1,18 @@
 use crate::{csr_reg_ro, mv_reg_rw};
 
 mv_reg_rw!(
+    /// Return address
+    ra
+);
+
+mv_reg_rw!(
     /// Stack pointer
     sp
+);
+
+mv_reg_rw!(
+    /// Global pointer
+    gp
 );
 
 mv_reg_rw!(
@@ -11,8 +21,8 @@ mv_reg_rw!(
 );
 
 mv_reg_rw!(
-    /// Return address
-    ra
+    /// Frame pointer
+    fp
 );
 
 /*            Unprivileged Floating-Point CSRs            */
