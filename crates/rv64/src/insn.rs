@@ -217,3 +217,14 @@ macro_rules! csr_reg_ro {
         }
     };
 }
+
+#[macro_export]
+macro_rules! naked_insn {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub fn $reg() {
+            unsafe { core::arch::asm!(stringify!($reg)) };
+        }
+    };
+}
