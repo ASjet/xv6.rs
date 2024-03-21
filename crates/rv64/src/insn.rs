@@ -136,7 +136,7 @@ pub fn sfence_vma() {
 }
 
 #[macro_export]
-macro_rules! mv_reg {
+macro_rules! mv_reg_rw {
     ($(#[$m:meta])* $reg:ident) => {
         $(#[$m])*
         #[allow(non_camel_case_types)]
@@ -159,7 +159,25 @@ macro_rules! mv_reg {
 }
 
 #[macro_export]
-macro_rules! csr_reg {
+macro_rules! mv_reg_ro {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { asm!(concat!("mv {}, ", stringify!($reg)), out(reg) r) };
+                r
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! csr_reg_rw {
     ($(#[$m:meta])* $reg:ident) => {
         $(#[$m])*
         #[allow(non_camel_case_types)]
@@ -176,6 +194,24 @@ macro_rules! csr_reg {
             #[inline]
             unsafe fn write(&self, x: u64) {
                 unsafe { asm!(concat!("csrw ", stringify!($reg), ", {}"), in(reg) x) };
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! csr_reg_ro {
+    ($(#[$m:meta])* $reg:ident) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        pub struct $reg;
+
+        impl RegisterRO for $reg {
+            #[inline]
+            fn read(&self) -> u64 {
+                let r: u64;
+                unsafe { asm!(concat!("csrr {}, ", stringify!($reg)), out(reg) r) };
+                r
             }
         }
     };
