@@ -136,11 +136,6 @@ pub trait RegisterRO {
     }
 }
 
-#[inline]
-pub fn sfence_vma() {
-    unsafe { asm!("sfence.vma zero, zero") };
-}
-
 #[macro_export]
 macro_rules! mv_reg_rw {
     ($(#[$m:meta])* $reg:ident) => {

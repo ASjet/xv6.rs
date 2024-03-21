@@ -1,5 +1,11 @@
 use super::Mask;
 use crate::{csr_reg_ro, csr_reg_rw};
+use core::arch::asm;
+
+#[inline]
+pub fn sfence_vma() {
+    unsafe { asm!("sfence.vma zero, zero") };
+}
 
 /*            Supervisor Trap Setup            */
 
