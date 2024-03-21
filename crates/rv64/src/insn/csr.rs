@@ -1,16 +1,6 @@
-use super::{Mask, Register};
+use super::{Mask, PrivilegeLevel, Register};
 use crate::csr_reg;
 use core::arch::asm;
-use int_enum::IntEnum;
-
-#[derive(Debug, IntEnum)]
-#[repr(u8)]
-pub enum PrivilegeLevel {
-    U = 0b00,
-    S = 0b01,
-    /*  0b10 is reserved */
-    M = 0b11,
-}
 
 csr_reg!(
     /// Current hart id

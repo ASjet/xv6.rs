@@ -1,4 +1,5 @@
 use core::arch::asm;
+use int_enum::IntEnum;
 
 pub mod csr;
 pub mod reg;
@@ -75,6 +76,15 @@ impl core::fmt::Debug for Mask {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "\n{BIT_INDEX}\n{:064b}\n", self.mask)
     }
+}
+
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum PrivilegeLevel {
+    U = 0b00,
+    S = 0b01,
+    /*  0b10 is reserved */
+    M = 0b11,
 }
 
 pub trait Register {
