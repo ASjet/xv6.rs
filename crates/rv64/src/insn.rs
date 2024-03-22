@@ -1,4 +1,3 @@
-use core::arch::asm;
 use int_enum::IntEnum;
 
 /// Machine Privileged Level
@@ -22,14 +21,14 @@ pub enum PrivilegeLevel {
 const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
 pub struct Mask {
-    mask: u64,
-    width: u64,
-    shift: u64,
+    mask: usize,
+    width: usize,
+    shift: usize,
 }
 
 impl Mask {
     #[inline]
-    pub const fn new(bit_width: u64, shift: u64) -> Mask {
+    pub const fn new(bit_width: usize, shift: usize) -> Mask {
         Mask {
             mask: ((1 << bit_width) - 1) << shift,
             width: bit_width,
@@ -39,43 +38,43 @@ impl Mask {
 
     /// Set the value at the mask in the target.
     #[inline]
-    pub fn set(&self, target: u64, value: u64) -> u64 {
+    pub fn set(&self, target: usize, value: usize) -> usize {
         (target & !self.mask) | (value << self.shift)
     }
 
     /// Set all bits at the mask in the target.
     #[inline]
-    pub fn set_all(&self, target: u64) -> u64 {
+    pub fn set_all(&self, target: usize) -> usize {
         target | self.mask
     }
 
     /// Clear all bits at the mask in the target.
     #[inline]
-    pub fn clear_all(&self, target: u64) -> u64 {
+    pub fn clear_all(&self, target: usize) -> usize {
         target & !self.mask
     }
 
     /// Get the value at the mask in the target.
     #[inline]
-    pub fn get(&self, target: u64) -> u64 {
+    pub fn get(&self, target: usize) -> usize {
         (target & self.mask) >> self.shift
     }
 
     /// Get the mask value
     #[inline]
-    pub const fn mask(&self) -> u64 {
+    pub const fn mask(&self) -> usize {
         self.mask
     }
 
     /// Get the mask shift
     #[inline]
-    pub const fn shift(&self) -> u64 {
+    pub const fn shift(&self) -> usize {
         self.shift
     }
 
     /// Get the mask width
     #[inline]
-    pub const fn width(&self) -> u64 {
+    pub const fn width(&self) -> usize {
         self.width
     }
 }
@@ -95,20 +94,20 @@ impl core::fmt::Debug for Mask {
 
 pub trait RegisterRW {
     /// Read the value of the register.
-    fn read(&self) -> u64;
+    fn read(&self) -> usize;
 
     /// Write the value to the register.
-    unsafe fn write(&self, value: u64);
+    unsafe fn write(&self, value: usize);
 
     /// Read the value of the register at the mask.
     #[inline]
-    fn read_mask(&self, mask: Mask) -> u64 {
+    fn read_mask(&self, mask: Mask) -> usize {
         mask.get(self.read())
     }
 
     /// Write the value of the register at the mask.
     #[inline]
-    unsafe fn write_mask(&self, mask: Mask, value: u64) {
+    unsafe fn write_mask(&self, mask: Mask, value: usize) {
         self.write(mask.set(self.read(), value))
     }
 
@@ -127,11 +126,11 @@ pub trait RegisterRW {
 
 pub trait RegisterRO {
     /// Read the value of the register.
-    fn read(&self) -> u64;
+    fn read(&self) -> usize;
 
     /// Read the value of the register at the mask.
     #[inline]
-    fn read_mask(&self, mask: Mask) -> u64 {
+    fn read_mask(&self, mask: Mask) -> usize {
         mask.get(self.read())
     }
 }
@@ -145,8 +144,8 @@ macro_rules! mv_reg_rw {
 
         impl crate::insn::RegisterRW for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
@@ -157,7 +156,7 @@ macro_rules! mv_reg_rw {
             }
 
             #[inline]
-            unsafe fn write(&self, x: u64) {
+            unsafe fn write(&self, x: usize) {
                 unsafe {
                     core::arch::asm!(
                         concat!("mv ", stringify!($reg), ", {}"),
@@ -174,8 +173,8 @@ macro_rules! mv_reg_rw {
 
         impl crate::insn::RegisterRW for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
@@ -187,7 +186,7 @@ macro_rules! mv_reg_rw {
             }
 
             #[inline]
-            unsafe fn write(&self, x: u64) {
+            unsafe fn write(&self, x: usize) {
                 unsafe {
                     core::arch::asm!(
                         concat!("mv ", stringify!($reg), ", {}"),
@@ -209,8 +208,8 @@ macro_rules! mv_reg_ro {
 
         impl crate::insn::RegisterRO for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
@@ -228,8 +227,8 @@ macro_rules! mv_reg_ro {
 
         impl crate::insn::RegisterRO for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
@@ -252,8 +251,8 @@ macro_rules! csr_reg_rw {
 
         impl crate::insn::RegisterRW for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),
@@ -264,7 +263,7 @@ macro_rules! csr_reg_rw {
             }
 
             #[inline]
-            unsafe fn write(&self, x: u64) {
+            unsafe fn write(&self, x: usize) {
                 unsafe {
                     core::arch::asm!(
                         concat!("csrw ", stringify!($reg), ", {}"),
@@ -281,8 +280,8 @@ macro_rules! csr_reg_rw {
 
         impl crate::insn::RegisterRW for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),
@@ -294,7 +293,7 @@ macro_rules! csr_reg_rw {
             }
 
             #[inline]
-            unsafe fn write(&self, x: u64) {
+            unsafe fn write(&self, x: usize) {
                 unsafe {
                     core::arch::asm!(
                         concat!("csrw ", stringify!($reg), ", {}"),
@@ -316,8 +315,8 @@ macro_rules! csr_reg_ro {
 
         impl crate::insn::RegisterRO for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),
@@ -335,8 +334,8 @@ macro_rules! csr_reg_ro {
 
         impl crate::insn::RegisterRO for $reg {
             #[inline]
-            fn read(&self) -> u64 {
-                let r: u64;
+            fn read(&self) -> usize {
+                let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),

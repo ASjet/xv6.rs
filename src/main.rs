@@ -73,7 +73,7 @@ fn halt() -> ! {
     }
 }
 
-fn cpuid() -> u64 {
+fn cpuid() -> usize {
     u::tp.read()
 }
 

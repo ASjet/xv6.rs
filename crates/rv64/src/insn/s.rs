@@ -88,6 +88,6 @@ csr_reg_rw!(
 );
 /// use riscv's sv39 page table scheme.
 pub const SATP_SV39: Mask = Mask::new(1, 63);
-pub const fn make_satp(pagetable: u64) -> u64 {
+pub const fn make_satp(pagetable: usize) -> usize {
     SATP_SV39.mask() | (pagetable >> 12)
 }

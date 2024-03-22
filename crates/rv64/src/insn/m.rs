@@ -49,7 +49,7 @@ impl mstatus {
     /// Write mstatus.MPP
     #[inline]
     pub unsafe fn w_mpp(&self, l: PrivilegeLevel) {
-        unsafe { self.write_mask(MSTATUS_MPP, l as u64) }
+        unsafe { self.write_mask(MSTATUS_MPP, l as usize) }
     }
 }
 pub const MSTATUS_TSR: Mask = Mask::new(1, 22);
