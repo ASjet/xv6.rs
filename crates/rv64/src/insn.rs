@@ -32,7 +32,7 @@ impl Mask {
         Mask {
             mask: ((1 << bit_width) - 1) << shift,
             width: bit_width,
-            shift,
+            shift: shift,
         }
     }
 
@@ -76,6 +76,17 @@ impl Mask {
     #[inline]
     pub const fn width(&self) -> usize {
         self.width
+    }
+}
+
+impl core::ops::BitOr for Mask {
+    type Output = Mask;
+    fn bitor(self, rhs: Mask) -> Mask {
+        Mask {
+            mask: self.mask | rhs.mask,
+            width: self.width + rhs.width,
+            shift: core::cmp::min(self.shift, rhs.shift),
+        }
     }
 }
 
