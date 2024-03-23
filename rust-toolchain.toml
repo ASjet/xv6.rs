@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly"
+channel = "nightly-2024-03-19"
 profile = "default"
 components = ["rust-src"]

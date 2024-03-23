@@ -57,7 +57,8 @@
 
 use core::panic::PanicInfo;
 use riscv_rt::entry;
-use rv64::insn::{m, u, RegisterRO, RegisterRW};
+use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
+use xv6::arch;
 use xv6::println;
 
 extern "C" {
@@ -73,14 +74,42 @@ fn halt() -> ! {
     }
 }
 
-fn cpuid() -> u64 {
+fn cpuid() -> usize {
     u::tp.read()
 }
 
-/// This will only be called on hart 0,
-/// while other harts will be in `wfi` with default `_mp_hook` implementation.
 #[entry]
-fn main() -> ! {
+fn start() -> ! {
+    let hart_id = m::mhartid.read();
+    unsafe {
+        // Disable paging for now.
+        s::satp.write(0);
+
+        // Delegate all interrupts and exceptions to supervisor mode.
+        m::medeleg.write(0xffff);
+        m::mideleg.write(0xffff);
+        s::sie.set_mask(s::SIE_SEIE | s::SIE_STIE | s::SIE_SSIE);
+
+        // Configure Physical Memory Protection to give supervisor mode
+        // access to all of physical memory.
+        m::pmpaddr0.write(0x3fffffffffffff);
+        m::pmpcfg0.write(0xf);
+
+        init_timer_interrupt(hart_id);
+
+        // set M Previous Privilege mode to Supervisor, for mret.
+        m::mstatus.w_mpp(insn::PrivilegeLevel::S);
+        // set M Exception Program Counter to main, for mret.
+        m::mepc.write(main as usize);
+        // Keep each CPU's hartid in its tp register, for cpuid().
+        u::tp.write(hart_id);
+    }
+    m::mret();
+    halt();
+}
+
+/// `start()` jumps here in S mode on all CPUs.
+extern "C" fn main() -> ! {
     println!("hello, world! hartid: {}/{}\n", cpuid(), unsafe {
         ((&_max_hart_id) as *const u8) as usize
     });
@@ -100,14 +129,39 @@ fn panic(_info: &PanicInfo) -> ! {
     halt();
 }
 
+static mut TIMER_SCRATCH: [[u64; 5]; 8] = [[0; 5]; 8];
+
+unsafe fn init_timer_interrupt(hart_id: usize) {
+    unsafe {
+        let interval = 1000000; // cycles; about 1/10th second in qemu.
+
+        // ask the CLINT for a timer interrupt.
+        let mtimecmp_ptr = arch::def::clint_mtimecmp(hart_id as u64) as *mut u64;
+        *(mtimecmp_ptr) = *(arch::def::CLINT_MTIME as *const u64) + interval;
+
+        // TODO: init mscratch
+        let scratch = &mut TIMER_SCRATCH[hart_id];
+        scratch[3] = mtimecmp_ptr as u64;
+        scratch[4] = interval;
+        m::mscratch.write(scratch.as_ptr() as usize);
+
+        // TODO: Set the M mode trap handler
+        // m::mtvec.write(todo!());
+
+        // Enable machine-mode interrupts.
+        m::mstatus.set_mask(m::MSTATUS_MIE);
+
+        // Enable machine-mode timer interrupts.
+        m::mie.set_mask(m::MIE_MTIE);
+    }
+}
+
 #[export_name = "_mp_hook"]
 pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
-    assert_eq!(hartid as u64, m::mhartid.read());
-    unsafe { u::tp.write(hartid as u64) };
-    println!("{}\n", hartid);
-    if hartid == 0 {
-        return true;
-    } else {
-        halt();
-    }
+    hartid == 0
+}
+
+#[export_name = "_setup_interrupts"]
+pub extern "Rust" fn setup_interrupts() {
+    // Do nothing and delegate to `start()`
 }
