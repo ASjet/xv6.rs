@@ -8,4 +8,5 @@ pub mod print;
 pub mod proc;
 pub mod spinlock;
 
-pub const NCPU: usize = 8;
+// Should be equal to _max_hart_id
+pub const NCPU: usize = 4;
