@@ -1,6 +1,7 @@
 use rv64::insn::{s, RegisterRW};
 
 pub mod def;
+pub mod trap;
 
 #[inline]
 pub fn is_intr_on() -> bool {

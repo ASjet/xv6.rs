@@ -132,6 +132,10 @@ fn panic(_info: &PanicInfo) -> ! {
 static mut TIMER_SCRATCH: [[u64; 5]; 8] = [[0; 5]; 8];
 
 unsafe fn init_timer_interrupt(hart_id: usize) {
+    extern "C" {
+        fn timer_vec();
+    }
+
     unsafe {
         let interval = 1000000; // cycles; about 1/10th second in qemu.
 
@@ -139,14 +143,12 @@ unsafe fn init_timer_interrupt(hart_id: usize) {
         let mtimecmp_ptr = arch::def::clint_mtimecmp(hart_id as u64) as *mut u64;
         *(mtimecmp_ptr) = *(arch::def::CLINT_MTIME as *const u64) + interval;
 
-        // TODO: init mscratch
         let scratch = &mut TIMER_SCRATCH[hart_id];
         scratch[3] = mtimecmp_ptr as u64;
         scratch[4] = interval;
         m::mscratch.write(scratch.as_ptr() as usize);
 
-        // TODO: Set the M mode trap handler
-        // m::mtvec.write(todo!());
+        m::mtvec.write(timer_vec as usize);
 
         // Enable machine-mode interrupts.
         m::mstatus.set_mask(m::MSTATUS_MIE);
