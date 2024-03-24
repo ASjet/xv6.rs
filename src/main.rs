@@ -69,6 +69,7 @@ extern "C" {
 
 #[export_name = "_mp_hook"]
 pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
+    assert!(hartid < xv6::NCPU);
     hartid == 0
 }
 
@@ -78,7 +79,8 @@ pub extern "Rust" fn setup_interrupts() {
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
     arch::halt();
 }
 
@@ -117,13 +119,6 @@ extern "C" fn main() -> ! {
     println!("hello, world! hartid: {}/{}\n", arch::cpuid(), unsafe {
         ((&_max_hart_id) as *const u8) as usize
     });
-    unsafe {
-        let heap_bottom = &_sheap as *const u8 as usize;
-        let heap_size = &_heap_size as *const u8 as usize;
-        println!(
-            "heap_bottom: {:x}, heap_size: {:x}\n",
-            heap_bottom, heap_size
-        );
-    }
+    panic!("test panic");
     arch::halt();
 }
