@@ -67,15 +67,19 @@ extern "C" {
     static _max_hart_id: u8;
 }
 
-#[inline]
-fn halt() -> ! {
-    loop {
-        unsafe { core::arch::riscv64::wfi() };
-    }
+#[export_name = "_mp_hook"]
+pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
+    hartid == 0
 }
 
-fn cpuid() -> usize {
-    u::tp.read()
+#[export_name = "_setup_interrupts"]
+pub extern "Rust" fn setup_interrupts() {
+    // Do nothing and delegate to `start()`
+}
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    arch::halt();
 }
 
 #[entry]
@@ -95,7 +99,7 @@ fn start() -> ! {
         m::pmpaddr0.write(0x3fffffffffffff);
         m::pmpcfg0.write(0xf);
 
-        init_timer_interrupt(hart_id);
+        arch::trap::init_timer_interrupt(hart_id);
 
         // set M Previous Privilege mode to Supervisor, for mret.
         m::mstatus.w_mpp(insn::PrivilegeLevel::S);
@@ -105,12 +109,12 @@ fn start() -> ! {
         u::tp.write(hart_id);
     }
     m::mret();
-    halt();
+    arch::halt();
 }
 
 /// `start()` jumps here in S mode on all CPUs.
 extern "C" fn main() -> ! {
-    println!("hello, world! hartid: {}/{}\n", cpuid(), unsafe {
+    println!("hello, world! hartid: {}/{}\n", arch::cpuid(), unsafe {
         ((&_max_hart_id) as *const u8) as usize
     });
     unsafe {
@@ -121,49 +125,5 @@ extern "C" fn main() -> ! {
             heap_bottom, heap_size
         );
     }
-    halt();
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    halt();
-}
-
-static mut TIMER_SCRATCH: [[u64; 5]; 8] = [[0; 5]; 8];
-
-unsafe fn init_timer_interrupt(hart_id: usize) {
-    extern "C" {
-        fn timer_vec();
-    }
-
-    unsafe {
-        let interval = 1000000; // cycles; about 1/10th second in qemu.
-
-        // ask the CLINT for a timer interrupt.
-        let mtimecmp_ptr = arch::def::clint_mtimecmp(hart_id as u64) as *mut u64;
-        *(mtimecmp_ptr) = *(arch::def::CLINT_MTIME as *const u64) + interval;
-
-        let scratch = &mut TIMER_SCRATCH[hart_id];
-        scratch[3] = mtimecmp_ptr as u64;
-        scratch[4] = interval;
-        m::mscratch.write(scratch.as_ptr() as usize);
-
-        m::mtvec.write(timer_vec as usize);
-
-        // Enable machine-mode interrupts.
-        m::mstatus.set_mask(m::MSTATUS_MIE);
-
-        // Enable machine-mode timer interrupts.
-        m::mie.set_mask(m::MIE_MTIE);
-    }
-}
-
-#[export_name = "_mp_hook"]
-pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
-    hartid == 0
-}
-
-#[export_name = "_setup_interrupts"]
-pub extern "Rust" fn setup_interrupts() {
-    // Do nothing and delegate to `start()`
+    arch::halt();
 }

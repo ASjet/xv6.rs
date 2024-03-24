@@ -1,4 +1,8 @@
+use super::def;
 use core::arch::global_asm;
+use rv64::insn::{m, RegisterRW};
+
+static mut TIMER_SCRATCH: [[u64; 5]; 8] = [[0; 5]; 8];
 
 global_asm!(
     "
@@ -35,3 +39,30 @@ timer_vec:
         mret
 "
 );
+
+pub unsafe fn init_timer_interrupt(hart_id: usize) {
+    extern "C" {
+        fn timer_vec();
+    }
+
+    unsafe {
+        let interval = 1000000; // cycles; about 1/10th second in qemu.
+
+        // ask the CLINT for a timer interrupt.
+        let mtimecmp_ptr = def::clint_mtimecmp(hart_id as u64) as *mut u64;
+        *(mtimecmp_ptr) = *(def::CLINT_MTIME as *const u64) + interval;
+
+        let scratch = &mut TIMER_SCRATCH[hart_id];
+        scratch[3] = mtimecmp_ptr as u64;
+        scratch[4] = interval;
+        m::mscratch.write(scratch.as_ptr() as usize);
+
+        m::mtvec.write(timer_vec as usize);
+
+        // Enable machine-mode interrupts.
+        m::mstatus.set_mask(m::MSTATUS_MIE);
+
+        // Enable machine-mode timer interrupts.
+        m::mie.set_mask(m::MIE_MTIE);
+    }
+}
