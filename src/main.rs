@@ -120,5 +120,5 @@ extern "C" fn main() -> ! {
         ((&_max_hart_id) as *const u8) as usize
     });
     panic!("test panic");
-    arch::halt();
+    // arch::halt();
 }
