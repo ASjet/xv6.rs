@@ -2,7 +2,7 @@ use super::def;
 use core::arch::global_asm;
 use rv64::insn::{m, RegisterRW};
 
-static mut TIMER_SCRATCH: [[u64; 5]; 8] = [[0; 5]; 8];
+static mut TIMER_SCRATCH: [[u64; 5]; crate::NCPU] = [[0; 5]; crate::NCPU];
 
 global_asm!(
     "

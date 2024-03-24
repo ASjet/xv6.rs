@@ -5,3 +5,5 @@
 pub mod arch;
 pub mod io;
 pub mod print;
+
+pub const NCPU: usize = 8;
