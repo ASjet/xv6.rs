@@ -66,7 +66,12 @@ impl CPU {
         &mut CPUS[arch::cpuid()]
     }
 
-    pub unsafe fn push_off(&mut self) {
+    pub unsafe fn lock(&mut self) -> InterruptLock {
+        self.push_off();
+        InterruptLock
+    }
+
+    unsafe fn push_off(&mut self) {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
         if self.noff == 0 {
@@ -75,12 +80,23 @@ impl CPU {
         self.noff += 1;
     }
 
-    pub unsafe fn pop_off(&mut self) {
+    unsafe fn pop_off(&mut self) {
         assert!(!arch::is_intr_on(), "pop_off - interruptible");
         assert!(self.noff >= 1, "pop_off");
         self.noff -= 1;
         if self.noff == 0 && self.interrupt_enabled {
             arch::intr_on();
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct InterruptLock;
+
+impl Drop for InterruptLock {
+    fn drop(&mut self) {
+        unsafe {
+            CPU::this().pop_off();
         }
     }
 }
