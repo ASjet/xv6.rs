@@ -1,3 +1,4 @@
+use crate::spinlock::Mutex;
 use core::fmt::{Arguments, Write};
 
 /// low-level driver routines for 16550a UART.
@@ -6,6 +7,8 @@ use core::fmt::{Arguments, Write};
 /// at address UART0. this macro returns the
 /// address of one of the registers.
 use crate::arch::def::UART0;
+
+static UART: Mutex<()> = Mutex::new((), "uart");
 
 struct UartReg(*mut u8);
 
@@ -77,6 +80,7 @@ struct SyncUartWriter;
 
 impl core::fmt::Write for SyncUartWriter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let _guard = UART.lock();
         s.as_bytes().iter().for_each(|c| {
             while (LSR.read() & LSR_TX_IDLE) == 0 {}
             THR.write(*c);
