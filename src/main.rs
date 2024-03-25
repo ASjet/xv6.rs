@@ -56,9 +56,13 @@
 //! This symbol MUST be defined with `#[entry]` attribute.
 
 use core::panic::PanicInfo;
+use core::sync::atomic::compiler_fence;
+use core::sync::atomic::AtomicBool;
+use core::sync::atomic::Ordering;
 use riscv_rt::entry;
 use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
 use xv6::arch;
+use xv6::io;
 use xv6::println;
 
 extern "C" {
@@ -114,11 +118,23 @@ fn start() -> ! {
     arch::halt();
 }
 
+static mut STARTED: AtomicBool = AtomicBool::new(false);
+
 /// `start()` jumps here in S mode on all CPUs.
+#[export_name = "_main"]
 extern "C" fn main() -> ! {
-    println!("hello, world! hartid: {}/{}\n", arch::cpuid(), unsafe {
-        ((&_max_hart_id) as *const u8) as usize
-    });
-    panic!("test panic");
-    // arch::halt();
+    if arch::cpuid() == 0 {
+        io::console::init();
+        println!("\nxv6 kernel is booting\n");
+        compiler_fence(Ordering::SeqCst);
+        unsafe { STARTED.store(true, Ordering::SeqCst) }
+    } else {
+        while unsafe { !STARTED.load(Ordering::SeqCst) } {}
+        compiler_fence(Ordering::SeqCst);
+        println!("hart {} starting", arch::cpuid());
+    }
+
+    // FIXME: deadlock of println!
+    println!("hello from hart {}!", arch::cpuid());
+    arch::halt();
 }

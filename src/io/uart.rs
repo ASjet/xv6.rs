@@ -8,7 +8,7 @@ use core::fmt::{Arguments, Write};
 /// address of one of the registers.
 use crate::arch::def::UART0;
 
-static UART: Mutex<()> = Mutex::new((), "uart");
+static UART: Mutex<SyncUartWriter> = Mutex::new(SyncUartWriter, "uart");
 
 struct UartReg(*mut u8);
 
@@ -72,15 +72,12 @@ pub fn init() {
 
     // enable transmit and receive interrupts.
     IER.write(IER_TX_ENABLE | IER_RX_ENABLE);
-
-    // TODO: use spinlock to sync uart io
 }
 
 struct SyncUartWriter;
 
 impl core::fmt::Write for SyncUartWriter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        let _guard = UART.lock();
         s.as_bytes().iter().for_each(|c| {
             while (LSR.read() & LSR_TX_IDLE) == 0 {}
             THR.write(*c);
@@ -90,5 +87,6 @@ impl core::fmt::Write for SyncUartWriter {
 }
 
 pub fn uart_print_sync(args: Arguments) {
-    write!(SyncUartWriter, "{}", args).unwrap();
+    let mut writer = UART.lock();
+    write!(writer, "{}", args).unwrap();
 }
