@@ -66,18 +66,14 @@ impl CPU {
         &mut CPUS[arch::cpuid()]
     }
 
-    pub unsafe fn lock(&mut self) -> InterruptLock {
-        self.push_off();
-        InterruptLock
-    }
-
-    pub unsafe fn push_off(&mut self) {
+    pub unsafe fn push_off(&mut self) -> InterruptLock {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
         if self.noff == 0 {
             self.interrupt_enabled = int_enabled;
         }
         self.noff += 1;
+        InterruptLock
     }
 
     pub unsafe fn pop_off(&mut self) {
