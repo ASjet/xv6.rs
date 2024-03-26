@@ -3,6 +3,10 @@ target = "riscv64gc-unknown-none-elf"
 
 [target.riscv64gc-unknown-none-elf]
 rustflags = ["-Clink-arg=-Tmemory.x", "-Clink-arg=-Tlink.x"]
+runner = """
+qemu-system-riscv64 -serial mon:stdio -M virt -m 2G -nographic \
+-bios none -smp 2 -kernel
+"""
 
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
