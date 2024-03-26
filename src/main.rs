@@ -93,6 +93,7 @@ fn panic(info: &PanicInfo) -> ! {
 #[entry]
 fn start() -> ! {
     let hart_id = m::mhartid.read();
+    println!("hello from hart{}!", hart_id);
     unsafe {
         // Disable paging for now.
         s::satp.write(0);
