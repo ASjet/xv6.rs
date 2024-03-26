@@ -55,6 +55,7 @@
 //!
 //! This symbol MUST be defined with `#[entry]` attribute.
 
+use core::hint::unreachable_unchecked;
 use core::panic::PanicInfo;
 use core::sync::atomic::compiler_fence;
 use core::sync::atomic::AtomicBool;
@@ -63,6 +64,7 @@ use riscv_rt::entry;
 use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
 use xv6::arch;
 use xv6::io;
+use xv6::panic_println;
 use xv6::println;
 
 extern "C" {
@@ -84,7 +86,7 @@ pub extern "Rust" fn setup_interrupts() {
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("{}", info);
+    panic_println!("hart({}): {}", arch::cpuid(), info);
     arch::halt();
 }
 
@@ -113,9 +115,10 @@ fn start() -> ! {
         m::mepc.write(main as usize);
         // Keep each CPU's hartid in its tp register, for cpuid().
         u::tp.write(hart_id);
+
+        m::mret();
+        unreachable_unchecked();
     }
-    m::mret();
-    arch::halt();
 }
 
 static mut STARTED: AtomicBool = AtomicBool::new(false);
@@ -129,12 +132,13 @@ extern "C" fn main() -> ! {
         compiler_fence(Ordering::SeqCst);
         unsafe { STARTED.store(true, Ordering::SeqCst) }
     } else {
-        while unsafe { !STARTED.load(Ordering::SeqCst) } {}
+        while unsafe { !STARTED.load(Ordering::SeqCst) } {
+            core::hint::spin_loop()
+        }
         compiler_fence(Ordering::SeqCst);
-        println!("hart {} starting", arch::cpuid());
+        println!("hart starting");
     }
 
-    // FIXME: deadlock of println!
-    println!("hello from hart {}!", arch::cpuid());
+    println!("hello from hart!");
     arch::halt();
 }

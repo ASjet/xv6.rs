@@ -43,7 +43,7 @@ impl<T> Mutex<T> {
                     )
                     .is_ok()
                 {
-                    break MutexGuard {
+                    return MutexGuard {
                         mutex: self,
                         _int_lock: int_lock,
                     };
@@ -54,7 +54,7 @@ impl<T> Mutex<T> {
     }
 
     unsafe fn holding(&self) -> bool {
-        self.locked.load(Ordering::Relaxed) as usize == (CPU::this() as *mut CPU) as usize
+        self.locked.load(Ordering::Relaxed) == CPU::this()
     }
 
     pub unsafe fn get_mut(&self) -> &mut T {

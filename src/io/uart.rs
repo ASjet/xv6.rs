@@ -1,4 +1,4 @@
-use crate::spinlock::Mutex;
+use crate::{proc::CPU, spinlock::Mutex};
 use core::fmt::{Arguments, Write};
 
 /// low-level driver routines for 16550a UART.
@@ -76,17 +76,25 @@ pub fn init() {
 
 struct SyncUartWriter;
 
+impl SyncUartWriter {
+    fn write_byte(&self, c: u8) {
+        let _guard = unsafe { CPU::this().push_off() };
+        while (LSR.read() & LSR_TX_IDLE) == 0 {}
+        THR.write(c);
+    }
+}
+
 impl core::fmt::Write for SyncUartWriter {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        s.as_bytes().iter().for_each(|c| {
-            while (LSR.read() & LSR_TX_IDLE) == 0 {}
-            THR.write(*c);
-        });
+        s.as_bytes().iter().for_each(|c| self.write_byte(*c));
         Ok(())
     }
 }
 
 pub fn uart_print_sync(args: Arguments) {
-    let mut writer = UART.lock();
-    write!(writer, "{}", args).unwrap();
+    UART.lock().write_fmt(args).unwrap();
+}
+
+pub fn uart_print(args: Arguments) {
+    SyncUartWriter.write_fmt(args).unwrap();
 }
