@@ -55,6 +55,7 @@
 //!
 //! This symbol MUST be defined with `#[entry]` attribute.
 
+use core::hint::unreachable_unchecked;
 use core::panic::PanicInfo;
 use core::sync::atomic::compiler_fence;
 use core::sync::atomic::AtomicBool;
@@ -113,9 +114,10 @@ fn start() -> ! {
         m::mepc.write(main as usize);
         // Keep each CPU's hartid in its tp register, for cpuid().
         u::tp.write(hart_id);
+
+        m::mret();
+        unreachable_unchecked();
     }
-    m::mret();
-    arch::halt();
 }
 
 static mut STARTED: AtomicBool = AtomicBool::new(false);
