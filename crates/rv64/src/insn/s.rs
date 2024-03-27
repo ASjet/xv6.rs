@@ -1,3 +1,5 @@
+use int_enum::IntEnum;
+
 use super::{Mask, PrivilegeLevel, RegisterRW};
 use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
 use core::arch::asm;
@@ -87,6 +89,7 @@ csr_reg_ro!(
 pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63);
 pub const SCAUSE_EXCEPT_INT: Mask = Mask::new(63, 0);
 pub const SCAUSE_EXCEPT: Mask = Mask::new(6, 0);
+#[derive(Debug, IntEnum)]
 #[repr(u8)]
 pub enum ScauseExceptInt {
     Reserved = 0,
@@ -95,6 +98,7 @@ pub enum ScauseExceptInt {
     SupervisorExternalInterrupt = 9,
     CounterOverflowInterrupt = 13,
 }
+#[derive(Debug, IntEnum)]
 #[repr(u8)]
 pub enum ScauseExcept {
     InsnAddrMisaligned = 0,
