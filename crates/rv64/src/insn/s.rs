@@ -84,6 +84,35 @@ csr_reg_ro!(
     /// Supervisor trap cause
     scause
 );
+pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63);
+pub const SCAUSE_EXCEPT_INT: Mask = Mask::new(63, 0);
+pub const SCAUSE_EXCEPT: Mask = Mask::new(6, 0);
+#[repr(u8)]
+pub enum ScauseExceptInt {
+    Reserved = 0,
+    SupervisorSoftwareInterrupt = 1,
+    SupervisorTimerInterrupt = 5,
+    SupervisorExternalInterrupt = 9,
+    CounterOverflowInterrupt = 13,
+}
+#[repr(u8)]
+pub enum ScauseExcept {
+    InsnAddrMisaligned = 0,
+    InsnAccessFault = 1,
+    IllegalInsn = 2,
+    Breakpoint = 3,
+    LoadAddrMisaligned = 4,
+    LoadAccessFault = 5,
+    StoreAddrMisaligned = 6,
+    StoreAccessFault = 7,
+    EnvCallFromU = 8,
+    EnvCallFromS = 9,
+    InsnPageFault = 12,
+    LoadPageFault = 13,
+    StorePageFault = 15,
+    SoftwareCheck = 18,
+    HardwareError = 19,
+}
 
 csr_reg_ro!(
     /// Supervisor bad address or instruction
