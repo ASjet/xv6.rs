@@ -1,7 +1,7 @@
 use super::def;
 use crate::{arch, println};
 use core::{arch::global_asm, panic};
-use rv64::insn::{m, s, RegisterRO, RegisterRW};
+use rv64::insn::{self, m, s, RegisterRO, RegisterRW};
 
 static mut TIMER_SCRATCH: [[u64; 5]; crate::NCPU] = [[0; 5]; crate::NCPU];
 
@@ -164,18 +164,21 @@ extern "C" fn kernel_trap() {
     let sstatus = s::sstatus.read();
     let scause = s::scause.read();
 
-    if s::SSTATUS_SPP.get(sstatus) == 0 {
-        panic!("kerneltrap: not from supervisor mode");
-    }
-    if arch::is_intr_on() {
-        panic!("kerneltrap: interrupts enabled");
-    }
+    assert!(
+        s::SSTATUS_SPP.get(sstatus) as u8 == insn::PrivilegeLevel::S.into(),
+        "kernel trap: not from supervisor mode"
+    );
+    assert!(!arch::is_intr_on(), "kernel_trap: interrupts enabled");
+
     match dev_intr() {
         0 => {
-            println!("scause {:x?}", scause);
-            println!("sepc={:x?} stval={:x?}", s::sepc.read(), s::stval.read());
-            // TODO: fix here with scause 1 or 4
-            panic!("kernel_trap");
+            // FIXME: panic here with scause 1 or 4
+            panic!(
+                "kernel_trap: scause: {:x?}, sep: {:x?}, stval: {:x?}",
+                scause,
+                s::sepc.read(),
+                s::stval.read()
+            );
         }
         2 => {
             // give up the CPU if this is a timer interrupt.
