@@ -11,13 +11,13 @@ const PLIC_SPRIORITY: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x201
 const PLIC_MCLAIM: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x200004, 0x2000);
 const PLIC_SCLAIM: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x201004, 0x2000);
 
-pub fn plic_init() {
+pub fn init() {
     // set desired IRQ priorities non-zero (otherwise disabled).
     PLIC_BASE.offset((def::UART0_IRQ * 4) as usize).write(1);
     PLIC_BASE.offset((def::VIRTIO0_IRQ * 4) as usize).write(1);
 }
 
-pub fn plic_init_hart() {
+pub fn init_hart() {
     let hart = crate::arch::cpuid();
     // set uart's enable bit for this hart's S-mode.
     PLIC_SENABLE
