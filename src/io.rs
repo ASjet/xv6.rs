@@ -1,41 +1,49 @@
 pub mod console;
 pub mod uart;
 
-pub struct BaseIO<T>(*mut T);
+pub struct BaseIO<T> {
+    base: usize,
+    data: core::marker::PhantomData<T>,
+}
 
 impl<T> BaseIO<T> {
     pub const fn new(base: usize) -> BaseIO<T> {
-        return BaseIO(base as *mut T);
+        BaseIO::<T> {
+            base: base,
+            data: core::marker::PhantomData,
+        }
     }
 
     pub const fn offset(&self, offset: usize) -> IO<T> {
-        return IO::new(unsafe { self.0.offset(offset as isize) });
+        IO::<T>::new(self.base + offset)
     }
 }
 
 pub struct ScratchIO<T> {
-    base: *mut T,
+    base: usize,
     scratch_size: usize,
+    data: core::marker::PhantomData<T>,
 }
 
 impl<T> ScratchIO<T> {
     pub const fn new(base: usize, scratch: usize) -> Self {
         ScratchIO {
-            base: base as *mut T,
+            base: base,
             scratch_size: scratch,
+            data: core::marker::PhantomData,
         }
     }
 
     pub const fn index(&self, index: usize) -> IO<T> {
-        return IO::new(unsafe { self.base.offset((self.scratch_size * index) as isize) });
+        return IO::new(self.base + (self.scratch_size * index));
     }
 }
 
 pub struct IO<T>(*mut T);
 
 impl<T> IO<T> {
-    pub const fn new(addr: *mut T) -> Self {
-        IO(addr)
+    pub const fn new(addr: usize) -> Self {
+        IO(addr as *mut T)
     }
 
     pub fn read(&self) -> T {
