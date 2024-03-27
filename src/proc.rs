@@ -1,7 +1,7 @@
 use crate::arch;
 
 /// Saved registers for kernel context switches.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 struct Context {
     ra: u64,
@@ -46,7 +46,7 @@ impl Context {
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
 
 /// Per-CPU state
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct CPU {
     _context: Context,
     noff: i32,
@@ -62,8 +62,12 @@ impl CPU {
         }
     }
 
-    pub unsafe fn this() -> &'static mut CPU {
+    pub unsafe fn this_mut() -> &'static mut CPU {
         &mut CPUS[arch::cpuid()]
+    }
+
+    pub unsafe fn this() -> &'static CPU {
+        &CPUS[arch::cpuid()]
     }
 
     pub unsafe fn push_off(&mut self) -> InterruptLock {
@@ -93,7 +97,7 @@ pub struct InterruptLock;
 impl Drop for InterruptLock {
     fn drop(&mut self) {
         unsafe {
-            CPU::this().pop_off();
+            CPU::this_mut().pop_off();
         }
     }
 }
