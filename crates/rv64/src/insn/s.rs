@@ -1,5 +1,5 @@
-use super::Mask;
-use crate::{csr_reg_ro, csr_reg_rw};
+use super::{Mask, PrivilegeLevel, RegisterRW};
+use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
 use core::arch::asm;
 
 #[inline]
@@ -7,12 +7,30 @@ pub fn sfence_vma() {
     unsafe { asm!("sfence.vma zero, zero") };
 }
 
+naked_insn!(
+    /// Return from S mode to U mode and jump to `sepc`
+    sret, nomem, nostack
+);
+
 /*            Supervisor Trap Setup            */
 
 csr_reg_rw!(
     /// Supervisor status register
     sstatus
 );
+impl sstatus {
+    /// Read sstatus.SPP
+    #[inline]
+    pub fn r_spp(&self) -> PrivilegeLevel {
+        PrivilegeLevel::try_from(self.read_mask(SSTATUS_SPP) as u8).unwrap()
+    }
+
+    /// Write sstatus.SPP
+    #[inline]
+    pub unsafe fn w_spp(&self, l: PrivilegeLevel) {
+        unsafe { self.write_mask(SSTATUS_SPP, l as usize) }
+    }
+}
 pub const SSTATUS_SD: Mask = Mask::new(1, 63);
 pub const SSTATUS_UXL: Mask = Mask::new(2, 32);
 pub const SSTATUS_MXR: Mask = Mask::new(1, 19);
