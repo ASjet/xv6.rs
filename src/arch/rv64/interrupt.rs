@@ -17,7 +17,8 @@ pub fn plic_init() {
     PLIC_BASE.offset((def::VIRTIO0_IRQ * 4) as usize).write(1);
 }
 
-pub fn plic_init_hart(hart: usize) {
+pub fn plic_init_hart() {
+    let hart = crate::arch::cpuid();
     // set uart's enable bit for this hart's S-mode.
     PLIC_SENABLE
         .index(hart)
