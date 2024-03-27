@@ -13,6 +13,24 @@ impl<T> BaseIO<T> {
     }
 }
 
+pub struct ScratchIO<T> {
+    base: *mut T,
+    scratch_size: usize,
+}
+
+impl<T> ScratchIO<T> {
+    pub const fn new(base: usize, scratch: usize) -> Self {
+        ScratchIO {
+            base: base as *mut T,
+            scratch_size: scratch,
+        }
+    }
+
+    pub const fn index(&self, index: usize) -> IO<T> {
+        return IO::new(unsafe { self.base.offset((self.scratch_size * index) as isize) });
+    }
+}
+
 pub struct IO<T>(*mut T);
 
 impl<T> IO<T> {
