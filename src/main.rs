@@ -63,6 +63,8 @@ use core::sync::atomic::Ordering;
 use riscv_rt::entry;
 use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
 use xv6::arch;
+use xv6::arch::interrupt;
+use xv6::arch::trap;
 use xv6::io;
 use xv6::panic_println;
 use xv6::println;
@@ -93,7 +95,6 @@ fn panic(info: &PanicInfo) -> ! {
 #[entry]
 fn start() -> ! {
     let hart_id = m::mhartid.read();
-    println!("hello from hart{}!", hart_id);
     unsafe {
         // Disable paging for now.
         s::satp.write(0);
@@ -127,19 +128,29 @@ static mut STARTED: AtomicBool = AtomicBool::new(false);
 /// `start()` jumps here in S mode on all CPUs.
 #[export_name = "_main"]
 extern "C" fn main() -> ! {
-    if arch::cpuid() == 0 {
+    let cpu_id = arch::cpuid();
+    if cpu_id == 0 {
         io::console::init();
         println!("\nxv6 kernel is booting\n");
-        compiler_fence(Ordering::SeqCst);
-        unsafe { STARTED.store(true, Ordering::SeqCst) }
+        unsafe {
+            trap::init_hart();
+            interrupt::init();
+            interrupt::init_hart();
+            compiler_fence(Ordering::SeqCst);
+            STARTED.store(true, Ordering::SeqCst)
+        }
     } else {
         while unsafe { !STARTED.load(Ordering::SeqCst) } {
             core::hint::spin_loop()
         }
         compiler_fence(Ordering::SeqCst);
-        println!("hart starting");
+        println!("hart {} starting", cpu_id);
+        unsafe {
+            trap::init_hart();
+            interrupt::init_hart();
+        }
     }
 
-    println!("hello from hart!");
+    println!("hello from hart {}!", cpu_id);
     arch::halt();
 }

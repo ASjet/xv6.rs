@@ -1,5 +1,7 @@
-use super::Mask;
-use crate::{csr_reg_ro, csr_reg_rw};
+use int_enum::IntEnum;
+
+use super::{Mask, PrivilegeLevel, RegisterRW};
+use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
 use core::arch::asm;
 
 #[inline]
@@ -7,12 +9,30 @@ pub fn sfence_vma() {
     unsafe { asm!("sfence.vma zero, zero") };
 }
 
+naked_insn!(
+    /// Return from S mode to U mode and jump to `sepc`
+    sret, nomem, nostack
+);
+
 /*            Supervisor Trap Setup            */
 
 csr_reg_rw!(
     /// Supervisor status register
     sstatus
 );
+impl sstatus {
+    /// Read sstatus.SPP
+    #[inline]
+    pub fn r_spp(&self) -> PrivilegeLevel {
+        PrivilegeLevel::try_from(self.read_mask(SSTATUS_SPP) as u8).unwrap()
+    }
+
+    /// Write sstatus.SPP
+    #[inline]
+    pub unsafe fn w_spp(&self, l: PrivilegeLevel) {
+        unsafe { self.write_mask(SSTATUS_SPP, l as usize) }
+    }
+}
 pub const SSTATUS_SD: Mask = Mask::new(1, 63);
 pub const SSTATUS_UXL: Mask = Mask::new(2, 32);
 pub const SSTATUS_MXR: Mask = Mask::new(1, 19);
@@ -66,6 +86,37 @@ csr_reg_ro!(
     /// Supervisor trap cause
     scause
 );
+pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63);
+pub const SCAUSE_EXCEPT_INT: Mask = Mask::new(63, 0);
+pub const SCAUSE_EXCEPT: Mask = Mask::new(6, 0);
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum ScauseExceptInt {
+    Reserved = 0,
+    SupervisorSoftwareInterrupt = 1,
+    SupervisorTimerInterrupt = 5,
+    SupervisorExternalInterrupt = 9,
+    CounterOverflowInterrupt = 13,
+}
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum ScauseExcept {
+    InsnAddrMisaligned = 0,
+    InsnAccessFault = 1,
+    IllegalInsn = 2,
+    Breakpoint = 3,
+    LoadAddrMisaligned = 4,
+    LoadAccessFault = 5,
+    StoreAddrMisaligned = 6,
+    StoreAccessFault = 7,
+    EnvCallFromU = 8,
+    EnvCallFromS = 9,
+    InsnPageFault = 12,
+    LoadPageFault = 13,
+    StorePageFault = 15,
+    SoftwareCheck = 18,
+    HardwareError = 19,
+}
 
 csr_reg_ro!(
     /// Supervisor bad address or instruction

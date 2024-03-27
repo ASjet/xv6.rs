@@ -14,7 +14,7 @@ pub mod u;
 pub enum PrivilegeLevel {
     U = 0b00,
     S = 0b01,
-    /*  0b10 is reserved */
+    Reserved = 0b10,
     M = 0b11,
 }
 

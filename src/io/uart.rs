@@ -1,4 +1,5 @@
-use crate::{proc::CPU, spinlock::Mutex};
+use super::{BaseIO, IO};
+use crate::spinlock::Mutex;
 use core::fmt::{Arguments, Write};
 
 /// low-level driver routines for 16550a UART.
@@ -8,45 +9,27 @@ use core::fmt::{Arguments, Write};
 /// address of one of the registers.
 use crate::arch::def::UART0;
 
-static UART: Mutex<SyncUartWriter> = Mutex::new(SyncUartWriter, "uart");
-
-struct UartReg(*mut u8);
-
-impl UartReg {
-    #[inline]
-    const fn new(offset: u64) -> Self {
-        Self((UART0 + offset) as *mut u8)
-    }
-
-    #[inline]
-    fn read(&self) -> u8 {
-        unsafe { self.0.read_volatile() }
-    }
-
-    #[inline]
-    fn write(&self, data: u8) {
-        unsafe { self.0.write_volatile(data) }
-    }
-}
+static UART: Mutex<SyncUartWriter> = Mutex::new(SyncUartWriter, "uart0");
 
 // the UART control registers.
 // some have different meanings for
 // read vs write.
 // see http://byterunner.com/16550.html
 
-const RHR: UartReg = UartReg::new(0); // receive holding register (for input bytes)
-const THR: UartReg = UartReg::new(0); // transmit holding register (for output bytes)
-const IER: UartReg = UartReg::new(1); // interrupt enable register
+const UART0_BASE: BaseIO<u8> = BaseIO::new(UART0 as usize);
+const RHR: IO<u8> = UART0_BASE.offset(0); // receive holding register (for input bytes)
+const THR: IO<u8> = UART0_BASE.offset(0); // transmit holding register (for output bytes)
+const IER: IO<u8> = UART0_BASE.offset(1); // interrupt enable register
 const IER_RX_ENABLE: u8 = 1 << 0;
 const IER_TX_ENABLE: u8 = 1 << 1;
-const FCR: UartReg = UartReg::new(2); // FIFO control register
+const FCR: IO<u8> = UART0_BASE.offset(2); // FIFO control register
 const FCR_FIFO_ENABLE: u8 = 1 << 0;
 const FCR_FIFO_CLEAR: u8 = 3 << 1; // clear the content of the two FIFOs
-const ISR: UartReg = UartReg::new(2); // interrupt status register
-const LCR: UartReg = UartReg::new(3); // line control register
+const ISR: IO<u8> = UART0_BASE.offset(2); // interrupt status register
+const LCR: IO<u8> = UART0_BASE.offset(3); // line control register
 const LCR_EIGHT_BITS: u8 = 3 << 0;
 const LCR_BAUD_LATCH: u8 = 1 << 7; // special mode to set baud rate
-const LSR: UartReg = UartReg::new(5); // line status register
+const LSR: IO<u8> = UART0_BASE.offset(5); // line status register
 const LSR_RX_READY: u8 = 1 << 0; // input is waiting to be read from RHR
 const LSR_TX_IDLE: u8 = 1 << 5; // THR can accept another character to send
 
@@ -78,7 +61,7 @@ struct SyncUartWriter;
 
 impl SyncUartWriter {
     fn write_byte(&self, c: u8) {
-        let _guard = unsafe { CPU::this().push_off() };
+        // let _guard = unsafe { CPU::this_mut().push_off() };
         while (LSR.read() & LSR_TX_IDLE) == 0 {}
         THR.write(c);
     }
