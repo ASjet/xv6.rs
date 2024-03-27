@@ -11,4 +11,5 @@ REGION_ALIAS("REGION_BSS", RAM);
 REGION_ALIAS("REGION_HEAP", RAM);
 REGION_ALIAS("REGION_STACK", RAM);
 
+_hart_stack_size = 1M;
 _max_hart_id = 8;
