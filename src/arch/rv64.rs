@@ -1,6 +1,7 @@
 use rv64::insn::{s, u, RegisterRW};
 
 pub mod def;
+pub mod interrupt;
 pub mod trap;
 
 #[inline]
