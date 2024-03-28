@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(riscv_ext_intrinsics)]
+#![allow(dead_code)]
 
 pub mod arch;
 pub mod io;
