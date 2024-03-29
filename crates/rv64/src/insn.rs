@@ -26,6 +26,7 @@ pub struct Mask {
     shift: usize,
 }
 
+// TODO: add unit test
 impl Mask {
     #[inline]
     pub const fn new(bit_width: usize, shift: usize) -> Mask {
