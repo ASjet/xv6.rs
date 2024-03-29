@@ -1,9 +1,13 @@
 use crate::insn::Mask;
 use core::{mem::size_of, ops::Index};
 
-pub mod sv39;
-pub mod sv48;
-pub mod sv57;
+mod sv39;
+mod sv48;
+mod sv57;
+
+pub use sv39::Sv39;
+pub use sv48::Sv48;
+pub use sv57::Sv57;
 
 /// The offset inside a page frame
 pub const PAGE_OFFSET: Mask = Mask::new(12, 0);

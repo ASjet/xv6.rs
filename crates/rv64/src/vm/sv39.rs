@@ -20,9 +20,9 @@ const PAGE_ADDR: Mask = Mask::new(PA_WIDTH - PAGE_OFFSET.width(), PAGE_OFFSET.wi
 const PTE_ADDR: Mask = Mask::new(PA_WIDTH - PAGE_OFFSET.width(), PTE_FLAGS.width());
 const MAX_VA: VirtAddr = VirtAddr((1 << VA_WIDTH) - 1);
 
-pub struct Addr;
+pub struct Sv39;
 
-impl PagingSchema for Addr {
+impl PagingSchema for Sv39 {
     #[inline]
     fn max_va() -> VirtAddr {
         MAX_VA
