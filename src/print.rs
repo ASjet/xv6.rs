@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::io::uart::uart_print_sync(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::io::uart::print(format_args!($($arg)*)));
 }
 
 #[macro_export]
@@ -11,7 +11,7 @@ macro_rules! println {
 
 #[macro_export]
 macro_rules! panic_print {
-    ($($arg:tt)*) => ($crate::io::uart::uart_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::io::uart::panic(format_args!($($arg)*)));
 }
 
 #[macro_export]
