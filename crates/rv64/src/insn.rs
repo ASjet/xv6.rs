@@ -78,6 +78,7 @@ impl Mask {
         self.width
     }
 
+    /// Fill the mask with the value.
     #[inline]
     pub const fn fill(&self, value: usize) -> usize {
         self.set(0, value)
