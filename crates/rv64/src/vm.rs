@@ -1,5 +1,8 @@
 use crate::insn::Mask;
-use core::{mem::size_of, ops::Index};
+use core::{
+    mem::size_of,
+    ops::{Add, Index, Sub},
+};
 
 mod sv39;
 mod sv48;
@@ -152,6 +155,22 @@ impl PhysAddr {
     }
 }
 
+impl Add<usize> for PhysAddr {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self {
+        PhysAddr(self.0 as usize + rhs)
+    }
+}
+
+impl Sub<usize> for PhysAddr {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self {
+        PhysAddr(self.0.saturating_sub(rhs))
+    }
+}
+
 impl From<usize> for PhysAddr {
     fn from(addr: usize) -> Self {
         PhysAddr(addr)
@@ -180,6 +199,22 @@ impl VirtAddr {
     }
 }
 
+impl Add<usize> for VirtAddr {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self {
+        VirtAddr(self.0 as usize + rhs)
+    }
+}
+
+impl Sub<usize> for VirtAddr {
+    type Output = Self;
+
+    fn sub(self, rhs: usize) -> Self {
+        VirtAddr(self.0.saturating_sub(rhs))
+    }
+}
+
 impl From<usize> for VirtAddr {
     fn from(addr: usize) -> Self {
         VirtAddr(addr)
@@ -200,6 +235,8 @@ impl PageTable {
             return Err(PageTableError::InvalidVirtualAddress);
         }
 
+        let offset = va.page_offset();
+
         let mut cur_pt = self;
         let mut pa = PhysAddr::null();
 
@@ -213,13 +250,13 @@ impl PageTable {
             pa = pte.addr::<T>();
 
             if pte.xwr() == 0 {
-                return Ok(pa);
+                return Ok(pa + offset);
             }
 
             cur_pt = unsafe { &*(pa.as_usize() as *const PageTable) };
         }
 
-        Ok(pa)
+        Ok(pa + offset)
     }
 }
 
