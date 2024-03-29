@@ -26,6 +26,7 @@ pub struct Mask {
     shift: usize,
 }
 
+// TODO: add unit test
 impl Mask {
     #[inline]
     pub const fn new(bit_width: usize, shift: usize) -> Mask {
@@ -38,25 +39,25 @@ impl Mask {
 
     /// Set the value at the mask in the target.
     #[inline]
-    pub fn set(&self, target: usize, value: usize) -> usize {
+    pub const fn set(&self, target: usize, value: usize) -> usize {
         (target & !self.mask) | (value << self.shift)
     }
 
     /// Set all bits at the mask in the target.
     #[inline]
-    pub fn set_all(&self, target: usize) -> usize {
+    pub const fn set_all(&self, target: usize) -> usize {
         target | self.mask
     }
 
     /// Clear all bits at the mask in the target.
     #[inline]
-    pub fn clear_all(&self, target: usize) -> usize {
+    pub const fn clear_all(&self, target: usize) -> usize {
         target & !self.mask
     }
 
     /// Get the value at the mask in the target.
     #[inline]
-    pub fn get(&self, target: usize) -> usize {
+    pub const fn get(&self, target: usize) -> usize {
         (target & self.mask) >> self.shift
     }
 
@@ -77,16 +78,11 @@ impl Mask {
     pub const fn width(&self) -> usize {
         self.width
     }
-}
 
-impl core::ops::BitOr for Mask {
-    type Output = Mask;
-    fn bitor(self, rhs: Mask) -> Mask {
-        Mask {
-            mask: self.mask | rhs.mask,
-            width: self.width + rhs.width,
-            shift: core::cmp::min(self.shift, rhs.shift),
-        }
+    /// Fill the mask with the value.
+    #[inline]
+    pub const fn fill(&self, value: usize) -> usize {
+        self.set(0, value)
     }
 }
 

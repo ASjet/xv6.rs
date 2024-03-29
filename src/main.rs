@@ -89,7 +89,6 @@ pub extern "Rust" fn setup_interrupts() {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     panic_println!("hart({}): {}", arch::cpuid(), info);
-    arch::halt();
 }
 
 #[entry]

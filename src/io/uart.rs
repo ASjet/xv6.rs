@@ -1,6 +1,9 @@
 use super::{BaseIO, IO};
-use crate::spinlock::Mutex;
-use core::fmt::{Arguments, Write};
+use crate::{arch, proc::CPU, spinlock::Mutex};
+use core::{
+    fmt::{Arguments, Write},
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 /// low-level driver routines for 16550a UART.
 ///
@@ -9,7 +12,8 @@ use core::fmt::{Arguments, Write};
 /// address of one of the registers.
 use crate::arch::def::UART0;
 
-static UART: Mutex<SyncUartWriter> = Mutex::new(SyncUartWriter, "uart0");
+static WRITER: Mutex<Writer> = Mutex::new(Writer, "uart0");
+static PANICED: AtomicBool = AtomicBool::new(false);
 
 // the UART control registers.
 // some have different meanings for
@@ -57,27 +61,38 @@ pub fn init() {
     IER.write(IER_TX_ENABLE | IER_RX_ENABLE);
 }
 
-struct SyncUartWriter;
+struct Writer;
 
-impl SyncUartWriter {
+impl Writer {
     fn write_byte(&self, c: u8) {
-        // let _guard = unsafe { CPU::this_mut().push_off() };
+        let _guard = unsafe { CPU::this_mut().push_off() };
         while (LSR.read() & LSR_TX_IDLE) == 0 {}
         THR.write(c);
     }
 }
 
-impl core::fmt::Write for SyncUartWriter {
+impl core::fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         s.as_bytes().iter().for_each(|c| self.write_byte(*c));
         Ok(())
     }
 }
 
-pub fn uart_print_sync(args: Arguments) {
-    UART.lock().write_fmt(args).unwrap();
+/// Print to UART console with keeping order
+pub fn print(args: Arguments) {
+    if PANICED.load(Ordering::Relaxed) {
+        arch::halt();
+    }
+    WRITER.lock().write_fmt(args).unwrap();
 }
 
-pub fn uart_print(args: Arguments) {
-    SyncUartWriter.write_fmt(args).unwrap();
+/// Called only from panic handler, can only be called ONCE
+pub fn panic(args: Arguments) -> ! {
+    if PANICED
+        .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
+        .is_ok()
+    {
+        Writer.write_fmt(args).unwrap();
+    }
+    arch::halt();
 }
