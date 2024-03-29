@@ -137,8 +137,28 @@ csr_reg_rw!(
     /// Supervisor address translation and protection
     satp
 );
-/// use riscv's sv39 page table scheme.
-pub const SATP_SV39: Mask = Mask::new(1, 63);
-pub const fn make_satp(pagetable: usize) -> usize {
-    SATP_SV39.mask() | (pagetable >> 12)
+pub const SATP_MODE: Mask = Mask::new(4, 60);
+pub const SATP_ASID: Mask = Mask::new(16, 44);
+pub const SATP_PPN: Mask = Mask::new(44, 0);
+
+#[derive(Debug, IntEnum)]
+#[repr(u8)]
+pub enum SatpMode {
+    Bare = 0,
+    Sv39 = 8,
+    Sv48 = 9,
+    Sv57 = 10,
+    Sv64 = 11,
+}
+
+impl satp {
+    #[inline]
+    pub fn mode(&self) -> Option<SatpMode> {
+        SatpMode::try_from(self.read_mask(SATP_MODE) as u8).ok()
+    }
+
+    #[inline]
+    pub unsafe fn set(&self, mode: SatpMode, asid: usize, ppn: usize) {
+        self.write((SATP_MODE.fill(mode as usize)) | (SATP_ASID.fill(asid)) | (SATP_PPN.fill(ppn)));
+    }
 }
