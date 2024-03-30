@@ -30,10 +30,32 @@ pub const PTE_A: Mask = Mask::new(1, 6);
 pub const PTE_D: Mask = Mask::new(1, 7);
 pub const PTE_RSW: Mask = Mask::new(2, 8);
 
+/// Reserved for future standard use and, until their use is defined by some
+/// standard extension, must be zeroed by software for forward compatibility.
+/// If any of these bits are set, a page-fault exception is raised.
+pub const PTE_RESERVED: Mask = Mask::new(7, 54);
+
+/// Reserved for use by the Svpbmt extension, If Svpbmt is not implemented,
+/// these bits remain reserved and must be zeroed by software for forward compatibility,
+/// or else a page-fault exception is raised.
+pub const PTE_PBMT: Mask = Mask::new(2, 61);
+
 /// Reserved for use by the Svnapot extension, if Svnapot is not implemented,
-/// this bit must be zeroed by software for forward compatibility,
+/// this bit remain reserved must be zeroed by software for forward compatibility,
 /// or else a page-fault exception is raised.
 pub const PTE_N: Mask = Mask::new(1, 63);
+
+#[derive(Clone, Copy, Debug)]
+pub struct PPN {
+    pte: Mask,
+    pa: Mask,
+}
+
+impl PPN {
+    pub const fn new(pte: Mask, pa: Mask) -> Self {
+        PPN { pte, pa }
+    }
+}
 
 pub trait PagingSchema {
     fn max_va() -> VirtAddr;
@@ -42,7 +64,7 @@ pub trait PagingSchema {
 
     fn pte_addr() -> &'static Mask;
 
-    fn pte_ppn() -> &'static [Mask];
+    fn ppn() -> &'static [PPN];
 
     fn va_vpn() -> &'static [Mask];
 }
@@ -58,6 +80,13 @@ impl<T: PagingSchema> PTE<T> {
     /// Physical address that the PTE points to
     pub fn addr(&self) -> PhysAddr {
         PhysAddr::from(T::page_addr().fill(T::pte_addr().get(self.entry)))
+    }
+
+    /// Page address that the PTE points to in the specified level
+    pub fn page(&self, level: usize) -> Option<PhysAddr> {
+        T::ppn()
+            .get(level)
+            .map(|PPN { pte, pa }| PhysAddr::from(pa.fill(pte.get(self.entry))))
     }
 
     /// The flags of a PTE
@@ -251,7 +280,7 @@ impl<T: PagingSchema> PageTable<T> {
         let mut cur_pt = self;
         let mut pa = PhysAddr::null();
 
-        for vpn in T::va_vpn().iter() {
+        for vpn in T::va_vpn().iter().rev() {
             let pte = &cur_pt[vpn.get(va.as_usize())];
 
             if !pte.valid() {
