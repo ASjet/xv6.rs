@@ -2,7 +2,7 @@ use crate::insn::Mask;
 use core::{
     marker::PhantomData,
     mem::size_of,
-    ops::{Add, Index, Sub},
+    ops::{Add, Index, IndexMut, Sub},
 };
 
 mod sv39;
@@ -201,7 +201,7 @@ impl From<PTE> for usize {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PhysAddr(usize);
 
@@ -248,7 +248,7 @@ impl From<PhysAddr> for usize {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct VirtAddr(usize);
 
@@ -295,7 +295,7 @@ impl From<VirtAddr> for usize {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 #[repr(transparent)]
 pub struct PageTable<T: PagingSchema> {
     table: [PTE; PAGE_SIZE / size_of::<PTE>()],
@@ -303,16 +303,11 @@ pub struct PageTable<T: PagingSchema> {
 }
 
 impl<T: PagingSchema + 'static> PageTable<T> {
-    pub unsafe fn from_pa(pa: PhysAddr) -> &'static Self {
-        &*(usize::from(pa) as *const PageTable<T>)
+    pub unsafe fn from_pa(pa: PhysAddr) -> &'static mut Self {
+        &mut *(usize::from(pa) as *mut PageTable<T>)
     }
 
-    // TODO: return PTE instead to get flags
-    pub fn walk(
-        &self,
-        va: VirtAddr,
-        _alloc: bool, // TODO: Implement page allocation
-    ) -> Result<PhysAddr, PageTableError> {
+    pub fn virt_to_phys(&self, va: VirtAddr) -> Result<PhysAddr, PageTableError> {
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
@@ -325,7 +320,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             let pte = cur_pt[level.vpn.get(va.into())];
 
             if !pte.valid() {
-                return Err(PageTableError::InvalidPTE);
+                return Err(PageTableError::InvalidPTE(pte));
             }
 
             if pte.xwr() == 0b000 {
@@ -335,7 +330,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             }
 
             if !pte.readable() {
-                return Err(PageTableError::AccessDenied);
+                return Err(PageTableError::InvalidPTE(pte));
             }
 
             pa = pte.addr();
@@ -345,6 +340,37 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
         assert!(pa != PhysAddr::null());
         Ok(pa + offset)
+    }
+
+    pub fn walk(
+        &mut self,
+        va: VirtAddr,
+        alloc: bool,
+    ) -> Result<(&'static PageLevel, &mut PTE), PageTableError> {
+        if va >= T::max_va() {
+            return Err(PageTableError::InvalidVirtualAddress);
+        }
+
+        let mut cur_pt = self;
+
+        for level in T::page_levels().iter().rev() {
+            let pte = &mut cur_pt[level.vpn.get(va.into())];
+
+            if !pte.valid() {
+                if !alloc {
+                    return Err(PageTableError::InvalidPTE(pte.clone()));
+                }
+                // TODO: Implement page table allocation
+            }
+
+            if pte.xwr() == 0b000 {
+                return Ok((level, pte));
+            }
+
+            cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
+        }
+
+        return Err(PageTableError::InvalidPageTable);
     }
 }
 
@@ -357,9 +383,16 @@ impl<T: PagingSchema> Index<usize> for PageTable<T> {
     }
 }
 
+impl<T: PagingSchema> IndexMut<usize> for PageTable<T> {
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.table[index]
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum PageTableError {
+    InvalidPageTable,
+    InvalidPTE(PTE),
     InvalidVirtualAddress,
-    InvalidPTE,
-    AccessDenied,
 }
