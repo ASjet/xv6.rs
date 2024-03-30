@@ -20,6 +20,7 @@ pub enum PrivilegeLevel {
 
 const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
 
+#[derive(Clone, Copy)]
 pub struct Mask {
     mask: usize,
     width: usize,
