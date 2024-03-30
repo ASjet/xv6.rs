@@ -30,6 +30,8 @@ pub const PTE_A: Mask = Mask::new(1, 6);
 pub const PTE_D: Mask = Mask::new(1, 7);
 pub const PTE_RSW: Mask = Mask::new(2, 8);
 
+pub const PTE_PPN: Mask = Mask::new(44, 10);
+
 /// Reserved for future standard use and, until their use is defined by some
 /// standard extension, must be zeroed by software for forward compatibility.
 /// If any of these bits are set, a page-fault exception is raised.
@@ -46,126 +48,112 @@ pub const PTE_PBMT: Mask = Mask::new(2, 61);
 pub const PTE_N: Mask = Mask::new(1, 63);
 
 #[derive(Clone, Copy, Debug)]
-pub struct PPN {
-    pte: Mask,
-    pa: Mask,
+pub struct PageLevel {
+    vpn: Mask,
+    pte_ppn: Mask,
+    pa_ppn: Mask,
     page_offset: Mask,
 }
 
-impl PPN {
-    pub const fn new(pte: Mask, pa: Mask) -> Self {
-        PPN {
-            pte,
-            pa,
-            page_offset: Mask::new(pa.shift(), 0),
+impl PageLevel {
+    pub const fn new(vpn: Mask, pte_ppn: Mask, pa_ppn: Mask) -> Self {
+        PageLevel {
+            vpn,
+            pte_ppn,
+            pa_ppn,
+            page_offset: Mask::new(pa_ppn.shift(), 0),
         }
     }
 }
 
 pub trait PagingSchema {
+    /// The maximum virtual address of the schema
     fn max_va() -> VirtAddr;
 
-    fn page_addr() -> &'static Mask;
-
-    fn pte_addr() -> &'static Mask;
-
-    fn ppn() -> &'static [PPN];
-
-    fn va_vpn() -> &'static [Mask];
+    /// The mask for page address
+    fn page_levels() -> &'static [PageLevel];
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct PTE<T: PagingSchema> {
-    entry: usize,
-    schema: PhantomData<T>,
-}
+pub struct PTE(usize);
 
-impl<T: PagingSchema> PTE<T> {
+impl PTE {
     /// Physical address that the PTE points to
     pub fn addr(&self) -> PhysAddr {
-        PhysAddr::from(T::page_addr().fill(T::pte_addr().get(self.entry)))
+        PhysAddr::from(PTE_PPN.get(self.0) << PAGE_OFFSET.width())
     }
 
     /// The flags of a PTE
     pub fn flags(&self) -> usize {
-        PTE_FLAGS.get(self.entry)
+        PTE_FLAGS.get(self.0)
     }
 
     /// PTE is valid
     pub fn valid(&self) -> bool {
-        PTE_V.get(self.entry) == 1
+        PTE_V.get(self.0) == 1
     }
 
     /// Page is readable
     pub fn readable(&self) -> bool {
-        PTE_R.get(self.entry) == 1
+        PTE_R.get(self.0) == 1
     }
 
     /// Page is writable
     pub fn writable(&self) -> bool {
-        PTE_W.get(self.entry) == 1
+        PTE_W.get(self.0) == 1
     }
 
     /// Page is executable
     pub fn executable(&self) -> bool {
-        PTE_X.get(self.entry) == 1
+        PTE_X.get(self.0) == 1
     }
 
     /// When RWX is 0b000, the PTE is a pointer to the next level page table;
     /// Otherwise, it is a leaf PTE.
     pub fn xwr(&self) -> usize {
-        PTE_XWR.get(self.entry)
+        PTE_XWR.get(self.0)
     }
 
     /// Page is accessible to mode U.
     /// With `SUM` bit set in `sstatus`, S mode may also access pages with `U = 1`.
     /// S mode may not execute code on page with `U = 1`
     pub fn user(&self) -> bool {
-        PTE_U.get(self.entry) == 1
+        PTE_U.get(self.0) == 1
     }
 
     /// Page is a global mapping, which exist in all address spaces
     pub fn global(&self) -> bool {
-        PTE_G.get(self.entry) == 1
+        PTE_G.get(self.0) == 1
     }
 
     /// The page has been read, write, or fetched from since the last time `A` was cleared
     pub fn accessed(&self) -> bool {
-        PTE_A.get(self.entry) == 1
+        PTE_A.get(self.0) == 1
     }
 
     /// The page has been written since the last time `D` was cleared
     pub fn dirty(&self) -> bool {
-        PTE_D.get(self.entry) == 1
+        PTE_D.get(self.0) == 1
     }
 
     /// Reserved for S mode software use
     pub fn rsw(&self) -> usize {
-        PTE_RSW.get(self.entry)
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.entry
+        PTE_RSW.get(self.0)
     }
 }
 
-impl<T: PagingSchema> From<usize> for PTE<T> {
+impl From<usize> for PTE {
     fn from(addr: usize) -> Self {
-        PTE {
-            entry: addr,
-            schema: PhantomData::<T>,
-        }
+        PTE(addr)
     }
 }
 
-/*
-An Sv39 address is
-partitioned as shown in Figure 58. Instruction fetch addresses and load and store effective addresses,
-which are 64 bits, must have bits 63–39 all equal to bit 38, or else a page-fault exception will occur.
-The 27-bit VPN is translated into a 44-bit PPN via a three-level page table, while the 12-bit page offset
-is untranslated.
-*/
+impl From<PTE> for usize {
+    fn from(pte: PTE) -> usize {
+        pte.0
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -182,10 +170,6 @@ impl PhysAddr {
 
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
-    }
-
-    pub const fn as_usize(&self) -> usize {
-        self.0
     }
 }
 
@@ -205,9 +189,16 @@ impl Sub<usize> for PhysAddr {
     }
 }
 
+// TODO: check address constraints
 impl From<usize> for PhysAddr {
     fn from(addr: usize) -> Self {
         PhysAddr(addr)
+    }
+}
+
+impl From<PhysAddr> for usize {
+    fn from(addr: PhysAddr) -> usize {
+        addr.0
     }
 }
 
@@ -227,10 +218,6 @@ impl VirtAddr {
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
-
-    pub const fn as_usize(&self) -> usize {
-        self.0
-    }
 }
 
 impl Add<usize> for VirtAddr {
@@ -249,22 +236,29 @@ impl Sub<usize> for VirtAddr {
     }
 }
 
+// TODO: check address constraints
 impl From<usize> for VirtAddr {
     fn from(addr: usize) -> Self {
         VirtAddr(addr)
     }
 }
 
+impl From<VirtAddr> for usize {
+    fn from(addr: VirtAddr) -> usize {
+        addr.0
+    }
+}
+
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct PageTable<T: PagingSchema> {
-    table: [PTE<T>; PAGE_SIZE / size_of::<usize>()],
+    table: [PTE; PAGE_SIZE / size_of::<PTE>()],
     schema: PhantomData<T>,
 }
 
 impl<T: PagingSchema + 'static> PageTable<T> {
     pub unsafe fn from_pa(pa: PhysAddr) -> &'static Self {
-        &*(pa.as_usize() as *const PageTable<T>)
+        &*(usize::from(pa) as *const PageTable<T>)
     }
 
     // TODO: return PTE instead to get flags
@@ -281,22 +275,16 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         let mut pa = PhysAddr::null();
         let mut offset = va.page_offset();
 
-        for (level, vpn) in T::va_vpn().iter().enumerate().rev() {
-            let pte = &cur_pt[vpn.get(va.as_usize())];
+        for level in T::page_levels().iter().rev() {
+            let pte = cur_pt[level.vpn.get(va.into())];
 
             if !pte.valid() {
                 return Err(PageTableError::InvalidPTE);
             }
 
-            let PPN {
-                pte: pte_ppn,
-                pa: pa_ppn,
-                page_offset,
-            } = T::ppn()[level];
-
             if pte.xwr() == 0b000 {
-                pa = PhysAddr::from(pa_ppn.fill(pte_ppn.get(pte.as_usize())));
-                offset = page_offset.get(va.as_usize());
+                pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+                offset = level.page_offset.get(va.into());
                 break;
             }
 
@@ -315,7 +303,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 }
 
 impl<T: PagingSchema> Index<usize> for PageTable<T> {
-    type Output = PTE<T>;
+    type Output = PTE;
 
     #[inline]
     fn index(&self, index: usize) -> &Self::Output {

@@ -1,37 +1,30 @@
-use super::{PagingSchema, VirtAddr, PAGE_OFFSET, PPN, PTE_FLAGS, VPN_WIDTH};
+use super::{PageLevel, PagingSchema, VirtAddr, PAGE_OFFSET, VPN_WIDTH};
 use crate::insn::Mask;
-
-const PA_WIDTH: usize = 56;
-const PAGE_ADDR: Mask = Mask::new(PA_WIDTH - PAGE_OFFSET.width(), PAGE_OFFSET.width());
-const PTE_ADDR: Mask = Mask::new(PAGE_ADDR.width(), PTE_FLAGS.width());
-
-const PPN_MASKS: [PPN; 4] = [
-    PPN::new(
-        Mask::new(9, PAGE_OFFSET.width()),
-        Mask::new(9, PAGE_OFFSET.width()),
-    ),
-    PPN::new(
-        Mask::new(9, PAGE_OFFSET.width() + 9),
-        Mask::new(9, PAGE_OFFSET.width() + 9),
-    ),
-    PPN::new(
-        Mask::new(9, PAGE_OFFSET.width() + 9 + 9),
-        Mask::new(9, PAGE_OFFSET.width() + 9 + 9),
-    ),
-    PPN::new(
-        Mask::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
-        Mask::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
-    ),
-];
 
 const VA_WIDTH: usize = 48;
 const MAX_VA: VirtAddr = VirtAddr((1 << VA_WIDTH) - 1);
 
-const VPN_MASKS: [Mask; 4] = [
-    Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 0),
-    Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 1),
-    Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 2),
-    Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 3),
+const PAGE_LEVELS: [PageLevel; 4] = [
+    PageLevel::new(
+        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 0),
+        Mask::new(9, PAGE_OFFSET.width()),
+        Mask::new(9, PAGE_OFFSET.width()),
+    ),
+    PageLevel::new(
+        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 1),
+        Mask::new(9, PAGE_OFFSET.width() + 9),
+        Mask::new(9, PAGE_OFFSET.width() + 9),
+    ),
+    PageLevel::new(
+        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 2),
+        Mask::new(9, PAGE_OFFSET.width() + 9 + 9),
+        Mask::new(9, PAGE_OFFSET.width() + 9 + 9),
+    ),
+    PageLevel::new(
+        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 3),
+        Mask::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
+        Mask::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
+    ),
 ];
 
 pub struct Sv48;
@@ -43,22 +36,7 @@ impl PagingSchema for Sv48 {
     }
 
     #[inline]
-    fn page_addr() -> &'static Mask {
-        &PAGE_ADDR
-    }
-
-    #[inline]
-    fn pte_addr() -> &'static Mask {
-        &PTE_ADDR
-    }
-
-    #[inline]
-    fn ppn() -> &'static [PPN] {
-        &PPN_MASKS
-    }
-
-    #[inline]
-    fn va_vpn() -> &'static [Mask] {
-        &VPN_MASKS
+    fn page_levels() -> &'static [super::PageLevel] {
+        &PAGE_LEVELS
     }
 }
