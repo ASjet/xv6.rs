@@ -15,6 +15,7 @@ pub use sv57::Sv57;
 
 /// The offset inside a page frame
 pub const PAGE_OFFSET: Mask = Mask::new(12, 0);
+pub const PA_PPN: Mask = Mask::new(44, PAGE_OFFSET.width());
 pub const PAGE_SIZE: usize = 1 << PAGE_OFFSET.width();
 pub const VPN_WIDTH: usize = PAGE_OFFSET.width() - 3; // sizeof::<usize>() == 2^3
 
@@ -74,11 +75,16 @@ pub trait PagingSchema {
     fn page_levels() -> &'static [PageLevel];
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PTE(usize);
 
 impl PTE {
+    /// Create a PTE points to `pa`
+    pub fn new(pa: PhysAddr) -> PTE {
+        PTE(PTE_V.set_all(PTE_PPN.fill(PA_PPN.get(pa.into()))))
+    }
+
     /// Physical address that the PTE points to
     pub fn addr(&self) -> PhysAddr {
         PhysAddr::from(PTE_PPN.get(self.0) << PAGE_OFFSET.width())
@@ -87,6 +93,10 @@ impl PTE {
     /// The flags of a PTE
     pub fn flags(&self) -> usize {
         PTE_FLAGS.get(self.0)
+    }
+
+    pub fn set_flags(&mut self, flags: usize) {
+        self.0 = PTE_FLAGS.set_all(self.0) | flags;
     }
 
     /// PTE is valid
@@ -99,9 +109,17 @@ impl PTE {
         PTE_R.get(self.0) == 1
     }
 
+    pub fn set_readable(&mut self, readable: bool) {
+        self.0 = PTE_R.set(self.0, readable as usize);
+    }
+
     /// Page is writable
     pub fn writable(&self) -> bool {
         PTE_W.get(self.0) == 1
+    }
+
+    pub fn set_writable(&mut self, writable: bool) {
+        self.0 = PTE_W.set(self.0, writable as usize);
     }
 
     /// Page is executable
@@ -109,10 +127,18 @@ impl PTE {
         PTE_X.get(self.0) == 1
     }
 
+    pub fn set_executable(&mut self, executable: bool) {
+        self.0 = PTE_X.set(self.0, executable as usize);
+    }
+
     /// When RWX is 0b000, the PTE is a pointer to the next level page table;
     /// Otherwise, it is a leaf PTE.
     pub fn xwr(&self) -> usize {
         PTE_XWR.get(self.0)
+    }
+
+    pub fn set_xwr(&mut self, xwr: usize) {
+        self.0 = PTE_XWR.set(self.0, xwr);
     }
 
     /// Page is accessible to mode U.
@@ -122,9 +148,17 @@ impl PTE {
         PTE_U.get(self.0) == 1
     }
 
+    pub fn set_user(&mut self, user: bool) {
+        self.0 = PTE_U.set(self.0, user as usize);
+    }
+
     /// Page is a global mapping, which exist in all address spaces
     pub fn global(&self) -> bool {
         PTE_G.get(self.0) == 1
+    }
+
+    pub fn set_global(&mut self, global: bool) {
+        self.0 = PTE_G.set(self.0, global as usize);
     }
 
     /// The page has been read, write, or fetched from since the last time `A` was cleared
@@ -132,14 +166,26 @@ impl PTE {
         PTE_A.get(self.0) == 1
     }
 
+    pub fn set_accessed(&mut self, accessed: bool) {
+        self.0 = PTE_A.set(self.0, accessed as usize);
+    }
+
     /// The page has been written since the last time `D` was cleared
     pub fn dirty(&self) -> bool {
         PTE_D.get(self.0) == 1
     }
 
+    pub fn set_dirty(&mut self, dirty: bool) {
+        self.0 = PTE_D.set(self.0, dirty as usize);
+    }
+
     /// Reserved for S mode software use
     pub fn rsw(&self) -> usize {
         PTE_RSW.get(self.0)
+    }
+
+    pub fn set_rsw(&mut self, rsw: usize) {
+        self.0 = PTE_RSW.set(self.0, rsw);
     }
 }
 
