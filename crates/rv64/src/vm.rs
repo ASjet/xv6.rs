@@ -1,5 +1,6 @@
 use crate::insn::Mask;
 use core::{
+    marker::PhantomData,
     mem::size_of,
     ops::{Add, Index, Sub},
 };
@@ -48,80 +49,86 @@ pub trait PagingSchema {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct PTE(usize);
+pub struct PTE<T: PagingSchema> {
+    entry: usize,
+    schema: PhantomData<T>,
+}
 
-impl PTE {
+impl<T: PagingSchema> PTE<T> {
     /// Physical address that the PTE points to
-    pub fn addr<T: PagingSchema>(&self) -> PhysAddr {
-        PhysAddr::from(T::page_addr().fill(T::pte_addr().get(self.0)))
+    pub fn addr(&self) -> PhysAddr {
+        PhysAddr::from(T::page_addr().fill(T::pte_addr().get(self.entry)))
     }
 
     /// The flags of a PTE
     pub fn flags(&self) -> usize {
-        PTE_FLAGS.get(self.0)
+        PTE_FLAGS.get(self.entry)
     }
 
     /// PTE is valid
     pub fn valid(&self) -> bool {
-        PTE_V.get(self.0) == 1
+        PTE_V.get(self.entry) == 1
     }
 
     /// Page is readable
     pub fn readable(&self) -> bool {
-        PTE_R.get(self.0) == 1
+        PTE_R.get(self.entry) == 1
     }
 
     /// Page is writable
     pub fn writable(&self) -> bool {
-        PTE_W.get(self.0) == 1
+        PTE_W.get(self.entry) == 1
     }
 
     /// Page is executable
     pub fn executable(&self) -> bool {
-        PTE_X.get(self.0) == 1
+        PTE_X.get(self.entry) == 1
     }
 
     /// When RWX is 0b000, the PTE is a pointer to the next level page table;
     /// Otherwise, it is a leaf PTE.
     pub fn xwr(&self) -> usize {
-        PTE_XWR.get(self.0)
+        PTE_XWR.get(self.entry)
     }
 
     /// Page is accessible to mode U.
     /// With `SUM` bit set in `sstatus`, S mode may also access pages with `U = 1`.
     /// S mode may not execute code on page with `U = 1`
     pub fn user(&self) -> bool {
-        PTE_U.get(self.0) == 1
+        PTE_U.get(self.entry) == 1
     }
 
     /// Page is a global mapping, which exist in all address spaces
     pub fn global(&self) -> bool {
-        PTE_G.get(self.0) == 1
+        PTE_G.get(self.entry) == 1
     }
 
     /// The page has been read, write, or fetched from since the last time `A` was cleared
     pub fn accessed(&self) -> bool {
-        PTE_A.get(self.0) == 1
+        PTE_A.get(self.entry) == 1
     }
 
     /// The page has been written since the last time `D` was cleared
     pub fn dirty(&self) -> bool {
-        PTE_D.get(self.0) == 1
+        PTE_D.get(self.entry) == 1
     }
 
     /// Reserved for S mode software use
     pub fn rsw(&self) -> usize {
-        PTE_RSW.get(self.0)
+        PTE_RSW.get(self.entry)
     }
 
     pub fn as_usize(&self) -> usize {
-        self.0
+        self.entry
     }
 }
 
-impl From<usize> for PTE {
+impl<T: PagingSchema> From<usize> for PTE<T> {
     fn from(addr: usize) -> Self {
-        PTE(addr)
+        PTE {
+            entry: addr,
+            schema: PhantomData::<T>,
+        }
     }
 }
 
@@ -223,10 +230,14 @@ impl From<usize> for VirtAddr {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct PageTable([PTE; PAGE_SIZE / size_of::<PTE>()]);
+pub struct PageTable<T: PagingSchema> {
+    table: [PTE<T>; PAGE_SIZE / size_of::<usize>()],
+    schema: PhantomData<T>,
+}
 
-impl PageTable {
-    pub fn walk<T: PagingSchema>(
+impl<T: PagingSchema> PageTable<T> {
+    // TODO: return PTE instead to get flags
+    pub fn walk(
         &self,
         va: VirtAddr,
         _alloc: bool, // TODO: Implement page allocation
@@ -241,31 +252,31 @@ impl PageTable {
         let mut pa = PhysAddr::null();
 
         for vpn in T::va_vpn().iter() {
-            let pte = cur_pt[vpn.get(va.as_usize())];
+            let pte = &cur_pt[vpn.get(va.as_usize())];
 
             if !pte.valid() {
                 return Err(PageTableError::InvalidPTE);
             }
 
-            pa = pte.addr::<T>();
+            pa = pte.addr();
 
             if pte.xwr() == 0 {
                 return Ok(pa + offset);
             }
 
-            cur_pt = unsafe { &*(pa.as_usize() as *const PageTable) };
+            cur_pt = unsafe { &*(pa.as_usize() as *const PageTable<T>) };
         }
 
         Ok(pa + offset)
     }
 }
 
-impl Index<usize> for PageTable {
-    type Output = PTE;
+impl<T: PagingSchema> Index<usize> for PageTable<T> {
+    type Output = PTE<T>;
 
     #[inline]
     fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
+        &self.table[index]
     }
 }
 
