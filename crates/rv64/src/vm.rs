@@ -4,6 +4,7 @@ use core::{
     mem::size_of,
     ops::{Add, Index, IndexMut, Sub},
 };
+use int_enum::IntEnum;
 
 mod sv39;
 mod sv48;
@@ -47,6 +48,16 @@ pub const PTE_PBMT: Mask = Mask::new(2, 61);
 /// this bit remain reserved must be zeroed by software for forward compatibility,
 /// or else a page-fault exception is raised.
 pub const PTE_N: Mask = Mask::new(1, 63);
+
+#[derive(Clone, Copy, Debug, IntEnum)]
+#[repr(usize)]
+pub enum PageWidth {
+    W4K = PAGE_OFFSET.width() + VPN_WIDTH * 0,
+    W2M = PAGE_OFFSET.width() + VPN_WIDTH * 1,
+    W1G = PAGE_OFFSET.width() + VPN_WIDTH * 2,
+    W39 = PAGE_OFFSET.width() + VPN_WIDTH * 3,
+    W48 = PAGE_OFFSET.width() + VPN_WIDTH * 4,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct PageLevel {
@@ -295,7 +306,13 @@ impl From<VirtAddr> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+/// The PageAllocator need interior mutable it's states
+pub trait PageAllocator {
+    unsafe fn alloc(&self, page_width: PageWidth) -> Option<&mut [u8]>;
+    unsafe fn dealloc(&self, page: &mut [u8]);
+}
+
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct PageTable<T: PagingSchema> {
     table: [PTE; PAGE_SIZE / size_of::<PTE>()],
@@ -345,26 +362,48 @@ impl<T: PagingSchema + 'static> PageTable<T> {
     pub fn walk(
         &mut self,
         va: VirtAddr,
-        alloc: bool,
+        level: usize,
+        alloc: Option<&(impl PageAllocator + Sync + Send)>,
     ) -> Result<(&'static PageLevel, &mut PTE), PageTableError> {
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
 
+        if level >= T::page_levels().len() {
+            return Err(PageTableError::InvalidPageLevel);
+        }
+
         let mut cur_pt = self;
 
-        for level in T::page_levels().iter().rev() {
-            let pte = &mut cur_pt[level.vpn.get(va.into())];
+        for (l, pl) in T::page_levels().iter().enumerate().rev() {
+            let pte = &mut cur_pt[pl.vpn.get(va.into())];
 
-            if !pte.valid() {
-                if !alloc {
+            if pte.valid() {
+                if pte.xwr() == 0b000 {
+                    return Ok((pl, pte));
+                }
+            } else {
+                if let Some(allocator) = alloc {
+                    let page = unsafe {
+                        if l == level {
+                            allocator.alloc(
+                                PageWidth::try_from(pl.page_offset.width())
+                                    .expect("invalid page width"),
+                            )
+                        } else {
+                            allocator.alloc(PageWidth::W4K)
+                        }
+                    }
+                    .ok_or(PageTableError::AllocFailed)?;
+                    page.fill(0);
+                    *pte = PTE::new(PhysAddr::from(page.as_ptr() as usize));
+                } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
                 }
-                // TODO: Implement page table allocation
             }
 
-            if pte.xwr() == 0b000 {
-                return Ok((level, pte));
+            if l == level {
+                return Ok((pl, pte));
             }
 
             cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
@@ -395,4 +434,6 @@ pub enum PageTableError {
     InvalidPageTable,
     InvalidPTE(PTE),
     InvalidVirtualAddress,
+    InvalidPageLevel,
+    AllocFailed,
 }
