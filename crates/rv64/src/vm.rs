@@ -49,11 +49,16 @@ pub const PTE_N: Mask = Mask::new(1, 63);
 pub struct PPN {
     pte: Mask,
     pa: Mask,
+    page_offset: Mask,
 }
 
 impl PPN {
     pub const fn new(pte: Mask, pa: Mask) -> Self {
-        PPN { pte, pa }
+        PPN {
+            pte,
+            pa,
+            page_offset: Mask::new(pa.shift(), 0),
+        }
     }
 }
 
@@ -80,13 +85,6 @@ impl<T: PagingSchema> PTE<T> {
     /// Physical address that the PTE points to
     pub fn addr(&self) -> PhysAddr {
         PhysAddr::from(T::page_addr().fill(T::pte_addr().get(self.entry)))
-    }
-
-    /// Page address that the PTE points to in the specified level
-    pub fn page(&self, level: usize) -> Option<PhysAddr> {
-        T::ppn()
-            .get(level)
-            .map(|PPN { pte, pa }| PhysAddr::from(pa.fill(pte.get(self.entry))))
     }
 
     /// The flags of a PTE
@@ -279,28 +277,39 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             return Err(PageTableError::InvalidVirtualAddress);
         }
 
-        let offset = va.page_offset();
-
         let mut cur_pt = self;
         let mut pa = PhysAddr::null();
+        let mut offset = va.page_offset();
 
-        for vpn in T::va_vpn().iter().rev() {
+        for (level, vpn) in T::va_vpn().iter().enumerate().rev() {
             let pte = &cur_pt[vpn.get(va.as_usize())];
 
             if !pte.valid() {
                 return Err(PageTableError::InvalidPTE);
             }
 
-            pa = pte.addr();
+            let PPN {
+                pte: pte_ppn,
+                pa: pa_ppn,
+                page_offset,
+            } = T::ppn()[level];
 
-            if pte.xwr() == 0 {
-                // FIXME: page level is ignored
-                return Ok(pa + offset);
+            if pte.xwr() == 0b000 {
+                pa = PhysAddr::from(pa_ppn.fill(pte_ppn.get(pte.as_usize())));
+                offset = page_offset.get(va.as_usize());
+                break;
             }
+
+            if !pte.readable() {
+                return Err(PageTableError::AccessDenied);
+            }
+
+            pa = pte.addr();
 
             cur_pt = unsafe { PageTable::from_pa(pa) };
         }
 
+        assert!(pa != PhysAddr::null());
         Ok(pa + offset)
     }
 }
