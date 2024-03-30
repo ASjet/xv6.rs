@@ -264,7 +264,11 @@ pub struct PageTable<T: PagingSchema> {
     schema: PhantomData<T>,
 }
 
-impl<T: PagingSchema> PageTable<T> {
+impl<T: PagingSchema + 'static> PageTable<T> {
+    pub unsafe fn from_pa(pa: PhysAddr) -> &'static Self {
+        &*(pa.as_usize() as *const PageTable<T>)
+    }
+
     // TODO: return PTE instead to get flags
     pub fn walk(
         &self,
@@ -290,10 +294,11 @@ impl<T: PagingSchema> PageTable<T> {
             pa = pte.addr();
 
             if pte.xwr() == 0 {
+                // FIXME: page level is ignored
                 return Ok(pa + offset);
             }
 
-            cur_pt = unsafe { &*(pa.as_usize() as *const PageTable<T>) };
+            cur_pt = unsafe { PageTable::from_pa(pa) };
         }
 
         Ok(pa + offset)
