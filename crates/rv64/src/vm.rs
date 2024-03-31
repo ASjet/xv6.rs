@@ -49,7 +49,7 @@ pub const PTE_PBMT: Mask = Mask::new(2, 61);
 /// or else a page-fault exception is raised.
 pub const PTE_N: Mask = Mask::new(1, 63);
 
-#[derive(Clone, Copy, Debug, IntEnum)]
+#[derive(Clone, Copy, Debug, IntEnum, PartialEq, Eq)]
 #[repr(usize)]
 pub enum PageWidth {
     W4K = PAGE_OFFSET.width() + VPN_WIDTH * 0,
@@ -429,7 +429,7 @@ impl<T: PagingSchema> IndexMut<usize> for PageTable<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PageTableError {
     InvalidPageTable,
     InvalidPTE(PTE),
