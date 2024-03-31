@@ -66,6 +66,7 @@ use xv6::arch;
 use xv6::arch::interrupt;
 use xv6::arch::trap;
 use xv6::io;
+use xv6::mem;
 use xv6::panic_println;
 use xv6::println;
 
@@ -132,6 +133,7 @@ extern "C" fn main() -> ! {
         io::console::init();
         println!("\nxv6 kernel is booting\n");
         unsafe {
+            mem::alloc::init();
             trap::init_hart();
             interrupt::init();
             interrupt::init_hart();
