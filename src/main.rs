@@ -97,7 +97,7 @@ fn start() -> ! {
     let hart_id = m::mhartid.read();
     unsafe {
         // Disable paging for now.
-        s::satp.write(0);
+        s::satp.set(s::SatpMode::Bare, 0, 0);
 
         // Delegate all interrupts and exceptions to supervisor mode.
         m::medeleg.write(0xffff);
