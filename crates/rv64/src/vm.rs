@@ -249,9 +249,9 @@ impl PhysAddr {
         PhysAddr(PA_PPN.get(self.0) << PA_PPN.shift())
     }
 
-    pub unsafe fn memset(&self, value: u8, len: usize) {
-        for ptr in self.0..self.0 + len {
-            *(ptr as *mut u8) = value;
+    pub unsafe fn memset<T: Sized + Copy>(&self, value: T, len: usize) {
+        for ptr in (self.0..self.0 + len).step_by(size_of::<T>()) {
+            *(ptr as *mut T) = value;
         }
     }
 }
