@@ -228,6 +228,14 @@ impl PhysAddr {
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
+
+    pub const fn page_roundup(&self) -> PhysAddr {
+        PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1))
+    }
+
+    pub const fn page_rounddown(&self) -> PhysAddr {
+        PhysAddr(PA_PPN.get(self.0))
+    }
 }
 
 impl Add<usize> for PhysAddr {
