@@ -1,5 +1,6 @@
 use crate::insn::Mask;
 use core::{
+    fmt::Debug,
     marker::PhantomData,
     mem::size_of,
     ops::{Add, Index, IndexMut, Sub},
@@ -86,7 +87,7 @@ pub trait PagingSchema {
     fn page_levels() -> &'static [PageLevel];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PTE(usize);
 
@@ -200,6 +201,17 @@ impl PTE {
     }
 }
 
+impl Debug for PTE {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "PTE(0x{:x},{:010b})",
+            PTE_PPN.get(self.0) << PAGE_OFFSET.width(),
+            self.flags()
+        )
+    }
+}
+
 impl From<usize> for PTE {
     fn from(addr: usize) -> Self {
         PTE(addr)
@@ -212,7 +224,7 @@ impl From<PTE> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PhysAddr(usize);
 
@@ -241,6 +253,12 @@ impl PhysAddr {
         for ptr in self.0..self.0 + len {
             *(ptr as *mut u8) = value;
         }
+    }
+}
+
+impl Debug for PhysAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "PhysAddr(0x{:x})", self.0)
     }
 }
 
@@ -273,7 +291,7 @@ impl From<PhysAddr> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct VirtAddr(usize);
 
@@ -288,6 +306,12 @@ impl VirtAddr {
 
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
+    }
+}
+
+impl Debug for VirtAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "VirtAddr(0x{:x})", self.0)
     }
 }
 
