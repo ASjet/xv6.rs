@@ -1,3 +1,5 @@
+use core::mem::size_of;
+
 use int_enum::IntEnum;
 
 /// Machine Privileged Level
@@ -84,6 +86,18 @@ impl Mask {
     #[inline]
     pub const fn fill(&self, value: usize) -> usize {
         self.set(0, value)
+    }
+}
+
+impl core::ops::BitOr for Mask {
+    type Output = Mask;
+
+    fn bitor(self, rhs: Mask) -> Mask {
+        Mask {
+            mask: self.mask | rhs.mask,
+            width: (size_of::<usize>() * 8).max(self.width + rhs.width),
+            shift: self.shift.min(rhs.shift),
+        }
     }
 }
 
