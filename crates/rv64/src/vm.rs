@@ -230,11 +230,17 @@ impl PhysAddr {
     }
 
     pub const fn page_roundup(&self) -> PhysAddr {
-        PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1))
+        PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
     }
 
     pub const fn page_rounddown(&self) -> PhysAddr {
-        PhysAddr(PA_PPN.get(self.0))
+        PhysAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+    }
+
+    pub unsafe fn memset(&self, value: u8, len: usize) {
+        for ptr in self.0..self.0 + len {
+            *(ptr as *mut u8) = value;
+        }
     }
 }
 
@@ -316,8 +322,8 @@ impl From<VirtAddr> for usize {
 
 /// The PageAllocator need interior mutable it's states
 pub trait PageAllocator {
-    unsafe fn alloc(&self, page_width: PageWidth) -> Option<&mut [u8]>;
-    unsafe fn dealloc(&self, page: &mut [u8]);
+    unsafe fn alloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
+    unsafe fn dealloc(&self, page: PhysAddr);
 }
 
 #[derive(Debug, Clone)]
@@ -392,19 +398,18 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 }
             } else {
                 if let Some(allocator) = alloc {
-                    let page = unsafe {
-                        if l == level {
-                            allocator.alloc(
-                                PageWidth::try_from(pl.page_offset.width())
-                                    .expect("invalid page width"),
-                            )
-                        } else {
-                            allocator.alloc(PageWidth::W4K)
-                        }
+                    let page_width = if l == level {
+                        PageWidth::try_from(pl.page_offset.width()).expect("invalid page width")
+                    } else {
+                        PageWidth::W4K
+                    };
+                    unsafe {
+                        let page = allocator
+                            .alloc(page_width)
+                            .ok_or(PageTableError::AllocFailed)?;
+                        page.memset(0, 1 << usize::from(page_width) - 3);
+                        *pte = PTE::new(page);
                     }
-                    .ok_or(PageTableError::AllocFailed)?;
-                    page.fill(0);
-                    *pte = PTE::new(PhysAddr::from(page.as_ptr() as usize));
                 } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
                 }
