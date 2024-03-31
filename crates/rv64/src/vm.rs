@@ -1,5 +1,6 @@
 use crate::insn::Mask;
 use core::{
+    fmt::Debug,
     marker::PhantomData,
     mem::size_of,
     ops::{Add, Index, IndexMut, Sub},
@@ -49,7 +50,7 @@ pub const PTE_PBMT: Mask = Mask::new(2, 61);
 /// or else a page-fault exception is raised.
 pub const PTE_N: Mask = Mask::new(1, 63);
 
-#[derive(Clone, Copy, Debug, IntEnum)]
+#[derive(Clone, Copy, Debug, IntEnum, PartialEq, Eq)]
 #[repr(usize)]
 pub enum PageWidth {
     W4K = PAGE_OFFSET.width() + VPN_WIDTH * 0,
@@ -86,7 +87,7 @@ pub trait PagingSchema {
     fn page_levels() -> &'static [PageLevel];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PTE(usize);
 
@@ -200,6 +201,17 @@ impl PTE {
     }
 }
 
+impl Debug for PTE {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "PTE(0x{:x},{:010b})",
+            PTE_PPN.get(self.0) << PAGE_OFFSET.width(),
+            self.flags()
+        )
+    }
+}
+
 impl From<usize> for PTE {
     fn from(addr: usize) -> Self {
         PTE(addr)
@@ -212,7 +224,7 @@ impl From<PTE> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct PhysAddr(usize);
 
@@ -227,6 +239,26 @@ impl PhysAddr {
 
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
+    }
+
+    pub const fn page_roundup(&self) -> PhysAddr {
+        PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
+    }
+
+    pub const fn page_rounddown(&self) -> PhysAddr {
+        PhysAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+    }
+
+    pub unsafe fn memset<T: Sized + Copy>(&self, value: T, len: usize) {
+        for ptr in (self.0..self.0 + len).step_by(size_of::<T>()) {
+            *(ptr as *mut T) = value;
+        }
+    }
+}
+
+impl Debug for PhysAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "PhysAddr(0x{:x})", self.0)
     }
 }
 
@@ -259,7 +291,7 @@ impl From<PhysAddr> for usize {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct VirtAddr(usize);
 
@@ -274,6 +306,12 @@ impl VirtAddr {
 
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
+    }
+}
+
+impl Debug for VirtAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "VirtAddr(0x{:x})", self.0)
     }
 }
 
@@ -308,8 +346,8 @@ impl From<VirtAddr> for usize {
 
 /// The PageAllocator need interior mutable it's states
 pub trait PageAllocator {
-    unsafe fn alloc(&self, page_width: PageWidth) -> Option<&mut [u8]>;
-    unsafe fn dealloc(&self, page: &mut [u8]);
+    unsafe fn alloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
+    unsafe fn dealloc(&self, page: PhysAddr);
 }
 
 #[derive(Debug, Clone)]
@@ -384,19 +422,18 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 }
             } else {
                 if let Some(allocator) = alloc {
-                    let page = unsafe {
-                        if l == level {
-                            allocator.alloc(
-                                PageWidth::try_from(pl.page_offset.width())
-                                    .expect("invalid page width"),
-                            )
-                        } else {
-                            allocator.alloc(PageWidth::W4K)
-                        }
+                    let page_width = if l == level {
+                        PageWidth::try_from(pl.page_offset.width()).expect("invalid page width")
+                    } else {
+                        PageWidth::W4K
+                    };
+                    unsafe {
+                        let page = allocator
+                            .alloc(page_width)
+                            .ok_or(PageTableError::AllocFailed)?;
+                        page.memset(0, 1 << usize::from(page_width) - 3);
+                        *pte = PTE::new(page);
                     }
-                    .ok_or(PageTableError::AllocFailed)?;
-                    page.fill(0);
-                    *pte = PTE::new(PhysAddr::from(page.as_ptr() as usize));
                 } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
                 }
@@ -429,7 +466,7 @@ impl<T: PagingSchema> IndexMut<usize> for PageTable<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PageTableError {
     InvalidPageTable,
     InvalidPTE(PTE),

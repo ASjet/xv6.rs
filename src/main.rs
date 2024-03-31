@@ -66,6 +66,7 @@ use xv6::arch;
 use xv6::arch::interrupt;
 use xv6::arch::trap;
 use xv6::io;
+use xv6::mem;
 use xv6::panic_println;
 use xv6::println;
 
@@ -96,7 +97,7 @@ fn start() -> ! {
     let hart_id = m::mhartid.read();
     unsafe {
         // Disable paging for now.
-        s::satp.write(0);
+        s::satp.set(s::SatpMode::Bare, 0, 0);
 
         // Delegate all interrupts and exceptions to supervisor mode.
         m::medeleg.write(0xffff);
@@ -132,6 +133,7 @@ extern "C" fn main() -> ! {
         io::console::init();
         println!("\nxv6 kernel is booting\n");
         unsafe {
+            mem::alloc::init();
             trap::init_hart();
             interrupt::init();
             interrupt::init_hart();

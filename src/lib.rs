@@ -5,6 +5,7 @@
 
 pub mod arch;
 pub mod io;
+pub mod mem;
 pub mod print;
 pub mod proc;
 pub mod spinlock;
