@@ -93,8 +93,8 @@ pub struct PTE(usize);
 
 impl PTE {
     /// Create a PTE points to `pa`
-    pub fn new(pa: PhysAddr) -> PTE {
-        PTE(PTE_V.set_all(PTE_PPN.fill(PA_PPN.get(pa.into()))))
+    pub fn new(pa: PhysAddr, flags: usize) -> PTE {
+        PTE(PTE_PPN.fill(PA_PPN.get(pa.into())) | PTE_FLAGS.fill(flags))
     }
 
     /// Physical address that the PTE points to
@@ -432,7 +432,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                             .palloc(page_width)
                             .ok_or(PageTableError::AllocFailed)?;
                         page.memset(0, 1 << usize::from(page_width) - 3);
-                        *pte = PTE::new(page);
+                        *pte = PTE::new(page, PTE_V.get(PTE_FLAGS.mask()));
                     }
                 } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
