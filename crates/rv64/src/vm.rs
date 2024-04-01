@@ -346,8 +346,8 @@ impl From<VirtAddr> for usize {
 
 /// The PageAllocator need interior mutable it's states
 pub trait PageAllocator {
-    unsafe fn alloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
-    unsafe fn dealloc(&self, page: PhysAddr);
+    unsafe fn palloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
+    unsafe fn pfree(&self, page: PhysAddr);
 }
 
 #[derive(Debug, Clone)]
@@ -429,7 +429,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                     };
                     unsafe {
                         let page = allocator
-                            .alloc(page_width)
+                            .palloc(page_width)
                             .ok_or(PageTableError::AllocFailed)?;
                         page.memset(0, 1 << usize::from(page_width) - 3);
                         *pte = PTE::new(page);
