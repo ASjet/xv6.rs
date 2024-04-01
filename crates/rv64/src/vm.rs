@@ -102,6 +102,10 @@ impl PTE {
         PhysAddr::from(PTE_PPN.get(self.0) << PAGE_OFFSET.width())
     }
 
+    pub fn set_addr(&mut self, addr: PhysAddr) {
+        self.0 = PTE_PPN.set(self.0, PA_PPN.get(addr.into()));
+    }
+
     /// The flags of a PTE
     pub fn flags(&self) -> usize {
         PTE_FLAGS.get(self.0)
@@ -304,6 +308,14 @@ impl VirtAddr {
         self.0 == 0
     }
 
+    pub const fn page_roundup(&self) -> VirtAddr {
+        VirtAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
+    }
+
+    pub const fn page_rounddown(&self) -> VirtAddr {
+        VirtAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+    }
+
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
@@ -448,6 +460,32 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
         return Err(PageTableError::InvalidPageTable);
     }
+
+    pub fn map_pages(
+        &mut self,
+        va: VirtAddr,
+        size: usize,
+        pa: PhysAddr,
+        perm: usize,
+        allocator: &(impl PageAllocator + Sync + Send),
+    ) -> Result<(), PageTableError> {
+        if size == 0 {
+            return Err(PageTableError::InvalidMapSize);
+        }
+
+        let end = VirtAddr::from(size - 1).page_rounddown().into();
+
+        for page in (0..=end).step_by(PAGE_SIZE) {
+            let offset = PAGE_SIZE * page;
+            let (_, pte) = self.walk(va + offset, 0, Some(allocator))?;
+            if pte.valid() {
+                return Err(PageTableError::DuplicateMapping(*pte));
+            }
+            *pte = PTE::new(pa + offset, PTE_FLAGS.fill(PTE_V.set(perm, 1)));
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: PagingSchema> Index<usize> for PageTable<T> {
@@ -473,4 +511,6 @@ pub enum PageTableError {
     InvalidVirtualAddress,
     InvalidPageLevel,
     AllocFailed,
+    InvalidMapSize,
+    DuplicateMapping(PTE),
 }
