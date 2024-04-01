@@ -1,21 +1,13 @@
+use crate::arch;
 use crate::println;
-
 use crate::spinlock::Mutex;
 use rv64::vm::{PhysAddr, PAGE_SIZE};
-
-extern "C" {
-    #[link_name = "_sheap"]
-    static _heap_start: u8;
-    #[link_name = "_heap_size"]
-    static _heap_size: u8;
-}
 
 pub static mut ALLOCATOR: LinkListAllocator = LinkListAllocator::default();
 
 pub fn init() {
     unsafe {
-        let start = PhysAddr::from(&_heap_start as *const u8 as usize);
-        let end = start + (&_heap_size as *const u8 as usize);
+        let (start, end) = arch::vm::heap_range();
         println!("init heap: {:?} - {:?}", start, end);
         ALLOCATOR = LinkListAllocator::new(start, end, PAGE_SIZE);
         ALLOCATOR.kfree_range(start, end);

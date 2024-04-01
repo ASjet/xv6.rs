@@ -93,13 +93,17 @@ pub struct PTE(usize);
 
 impl PTE {
     /// Create a PTE points to `pa`
-    pub fn new(pa: PhysAddr) -> PTE {
-        PTE(PTE_V.set_all(PTE_PPN.fill(PA_PPN.get(pa.into()))))
+    pub fn new(pa: PhysAddr, flags: usize) -> PTE {
+        PTE(PTE_PPN.fill(PA_PPN.get(pa.into())) | PTE_FLAGS.fill(flags))
     }
 
     /// Physical address that the PTE points to
     pub fn addr(&self) -> PhysAddr {
         PhysAddr::from(PTE_PPN.get(self.0) << PAGE_OFFSET.width())
+    }
+
+    pub fn set_addr(&mut self, addr: PhysAddr) {
+        self.0 = PTE_PPN.set(self.0, PA_PPN.get(addr.into()));
     }
 
     /// The flags of a PTE
@@ -304,6 +308,14 @@ impl VirtAddr {
         self.0 == 0
     }
 
+    pub const fn page_roundup(&self) -> VirtAddr {
+        VirtAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
+    }
+
+    pub const fn page_rounddown(&self) -> VirtAddr {
+        VirtAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+    }
+
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
@@ -346,8 +358,8 @@ impl From<VirtAddr> for usize {
 
 /// The PageAllocator need interior mutable it's states
 pub trait PageAllocator {
-    unsafe fn alloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
-    unsafe fn dealloc(&self, page: PhysAddr);
+    unsafe fn palloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
+    unsafe fn pfree(&self, page: PhysAddr);
 }
 
 #[derive(Debug, Clone)]
@@ -416,6 +428,10 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         for (l, pl) in T::page_levels().iter().enumerate().rev() {
             let pte = &mut cur_pt[pl.vpn.get(va.into())];
 
+            if l == level {
+                return Ok((pl, pte));
+            }
+
             if pte.valid() {
                 if pte.xwr() == 0b000 {
                     return Ok((pl, pte));
@@ -429,24 +445,46 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                     };
                     unsafe {
                         let page = allocator
-                            .alloc(page_width)
+                            .palloc(page_width)
                             .ok_or(PageTableError::AllocFailed)?;
                         page.memset(0, 1 << usize::from(page_width) - 3);
-                        *pte = PTE::new(page);
+                        *pte = PTE::new(page, PTE_V.get(PTE_FLAGS.mask()));
                     }
                 } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
                 }
             }
 
-            if l == level {
-                return Ok((pl, pte));
-            }
-
             cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
         }
 
         return Err(PageTableError::InvalidPageTable);
+    }
+
+    pub fn map_pages(
+        &mut self,
+        va: VirtAddr,
+        size: usize,
+        pa: PhysAddr,
+        perm: usize,
+        allocator: &(impl PageAllocator + Sync + Send),
+    ) -> Result<(), PageTableError> {
+        if size == 0 {
+            return Err(PageTableError::InvalidMapSize);
+        }
+
+        let end = VirtAddr::from(size - 1).page_rounddown().into();
+
+        for page in (0..=end).step_by(PAGE_SIZE) {
+            let offset = PAGE_SIZE * page;
+            let (_, pte) = self.walk(va + offset, 0, Some(allocator))?;
+            if pte.valid() {
+                return Err(PageTableError::DuplicateMapping(*pte));
+            }
+            *pte = PTE::new(pa + offset, PTE_FLAGS.fill(PTE_V.set(perm, 1)));
+        }
+
+        Ok(())
     }
 }
 
@@ -473,4 +511,6 @@ pub enum PageTableError {
     InvalidVirtualAddress,
     InvalidPageLevel,
     AllocFailed,
+    InvalidMapSize,
+    DuplicateMapping(PTE),
 }

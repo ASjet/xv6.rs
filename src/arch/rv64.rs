@@ -3,6 +3,7 @@ use rv64::insn::{s, u, RegisterRW};
 pub mod def;
 pub mod interrupt;
 pub mod trap;
+pub mod vm;
 
 #[inline]
 pub fn is_intr_on() -> bool {
