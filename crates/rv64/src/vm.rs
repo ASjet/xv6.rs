@@ -416,6 +416,10 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         for (l, pl) in T::page_levels().iter().enumerate().rev() {
             let pte = &mut cur_pt[pl.vpn.get(va.into())];
 
+            if l == level {
+                return Ok((pl, pte));
+            }
+
             if pte.valid() {
                 if pte.xwr() == 0b000 {
                     return Ok((pl, pte));
@@ -437,10 +441,6 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 } else {
                     return Err(PageTableError::InvalidPTE(pte.clone()));
                 }
-            }
-
-            if l == level {
-                return Ok((pl, pte));
             }
 
             cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
