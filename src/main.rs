@@ -133,7 +133,8 @@ extern "C" fn main() -> ! {
         io::console::init();
         println!("\nxv6 kernel is booting\n");
         unsafe {
-            mem::alloc::init();
+            mem::init();
+            mem::init_hart();
             trap::init_hart();
             interrupt::init();
             interrupt::init_hart();
@@ -147,6 +148,7 @@ extern "C" fn main() -> ! {
         compiler_fence(Ordering::SeqCst);
         println!("hart {} starting", cpu_id);
         unsafe {
+            mem::init_hart();
             trap::init_hart();
             interrupt::init_hart();
         }
