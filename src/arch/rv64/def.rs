@@ -67,7 +67,8 @@ pub const MAX_VA: usize = 1 << (9 + 9 + 9 + 12 - 1);
 /// end -- start of kernel page allocation area
 /// PHYSTOP -- end RAM used by the kernel
 pub const KERNEL_BASE: usize = 0x80000000;
-pub const PHYSTOP: usize = KERNEL_BASE + 128 * 1024 * 1024;
+/// 128MB available RAM, same as in memory.x
+pub const PHY_STOP: usize = KERNEL_BASE + 128 * 1024 * 1024;
 
 /// qemu puts UART registers here in physical memory.
 pub const UART0: usize = 0x10000000;
