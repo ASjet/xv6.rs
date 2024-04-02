@@ -409,7 +409,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         Ok(pa + offset)
     }
 
-    pub fn walk(
+    pub unsafe fn walk(
         &mut self,
         va: VirtAddr,
         level: usize,
@@ -461,7 +461,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         return Err(PageTableError::InvalidPageTable);
     }
 
-    pub fn map_pages(
+    pub unsafe fn map_pages(
         &mut self,
         va: VirtAddr,
         size: usize,
