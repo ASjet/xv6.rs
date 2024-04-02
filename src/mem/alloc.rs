@@ -1,23 +1,25 @@
 use crate::arch;
 use crate::println;
 use crate::spinlock::Mutex;
+use rv64::vm::PageAllocator;
+use rv64::vm::PageWidth;
 use rv64::vm::{PhysAddr, PAGE_SIZE};
 
 pub static mut ALLOCATOR: LinkListAllocator = LinkListAllocator::default();
 
 pub fn init() {
-    unsafe {
-        let (start, end) = arch::vm::heap_range();
-        println!("init heap: {:?} - {:?}", start, end);
+    let (start, end) = arch::vm::heap_range();
+    println!("init heap: {:?} - {:?}", start, end);
+    let pages = unsafe {
         ALLOCATOR = LinkListAllocator::new(start, end, PAGE_SIZE);
         ALLOCATOR.kfree_range(start, end);
-        let pages = ALLOCATOR.free_pages();
-        println!(
-            "{} pages ({} KiB) available",
-            pages,
-            pages * PAGE_SIZE / 1024
-        );
-    }
+        ALLOCATOR.free_pages()
+    };
+    println!(
+        "{} pages ({} KiB) available",
+        pages,
+        pages * PAGE_SIZE / 1024
+    );
 }
 
 #[repr(C)]
@@ -106,3 +108,19 @@ impl LinkListAllocator {
         }
     }
 }
+
+impl PageAllocator for LinkListAllocator {
+    unsafe fn palloc(&self, page_width: PageWidth) -> Option<PhysAddr> {
+        if page_width != PageWidth::W4K {
+            return None;
+        }
+        self.kalloc()
+    }
+
+    unsafe fn pfree(&self, page: PhysAddr) {
+        self.kfree(page)
+    }
+}
+
+unsafe impl Sync for LinkListAllocator {}
+unsafe impl Send for LinkListAllocator {}
