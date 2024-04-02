@@ -433,7 +433,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             }
 
             if pte.valid() {
-                if pte.xwr() == 0b000 {
+                if pte.xwr() != 0b000 {
                     return Ok((pl, pte));
                 }
             } else {
@@ -475,8 +475,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
         let end = VirtAddr::from(size - 1).page_rounddown().into();
 
-        for page in (0..=end).step_by(PAGE_SIZE) {
-            let offset = PAGE_SIZE * page;
+        for offset in (0..=end).step_by(PAGE_SIZE) {
             let (_, pte) = self.walk(va + offset, 0, Some(allocator))?;
             if pte.valid() {
                 return Err(PageTableError::DuplicateMapping(0, *pte));
