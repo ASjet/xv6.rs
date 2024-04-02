@@ -140,7 +140,7 @@ pub unsafe fn init_timer_interrupt(hart_id: usize) {
         let interval = 1000000; // cycles; about 1/10th second in qemu.
 
         // ask the CLINT for a timer interrupt.
-        let mtimecmp_ptr = def::clint_mtimecmp(hart_id as u64) as *mut u64;
+        let mtimecmp_ptr = def::clint_mtimecmp(hart_id) as *mut u64;
         *(mtimecmp_ptr) = *(def::CLINT_MTIME as *const u64) + interval;
 
         let scratch = &mut TIMER_SCRATCH[hart_id];
@@ -229,7 +229,7 @@ fn dev_intr() -> i32 {
                 // This is a supervisor external interrupt, via PLIC.
                 // irq indicates which device interrupted.
 
-                match irq as u64 {
+                match irq as usize {
                     def::UART0_IRQ => {
                         // TODO: uartintr();
                         return 1;

@@ -114,6 +114,12 @@ impl core::fmt::Debug for Mask {
     }
 }
 
+impl From<Mask> for usize {
+    fn from(mask: Mask) -> usize {
+        mask.mask >> mask.shift
+    }
+}
+
 pub trait RegisterRW {
     /// Read the value of the register.
     fn read(&self) -> usize;
