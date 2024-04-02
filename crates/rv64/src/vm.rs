@@ -383,11 +383,11 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         let mut pa = PhysAddr::null();
         let mut offset = va.page_offset();
 
-        for level in T::page_levels().iter().rev() {
+        for (l, level) in T::page_levels().iter().enumerate().rev() {
             let pte = cur_pt[level.vpn.get(va.into())];
 
             if !pte.valid() {
-                return Err(PageTableError::InvalidPTE(pte));
+                return Err(PageTableError::InvalidPTE(l, pte));
             }
 
             if pte.xwr() == 0b000 {
@@ -397,7 +397,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             }
 
             if !pte.readable() {
-                return Err(PageTableError::InvalidPTE(pte));
+                return Err(PageTableError::InvalidPTE(l, pte));
             }
 
             pa = pte.addr();
@@ -451,7 +451,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                         *pte = PTE::new(page, PTE_V.get(PTE_FLAGS.mask()));
                     }
                 } else {
-                    return Err(PageTableError::InvalidPTE(pte.clone()));
+                    return Err(PageTableError::InvalidPTE(l, pte.clone()));
                 }
             }
 
@@ -479,7 +479,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
             let offset = PAGE_SIZE * page;
             let (_, pte) = self.walk(va + offset, 0, Some(allocator))?;
             if pte.valid() {
-                return Err(PageTableError::DuplicateMapping(*pte));
+                return Err(PageTableError::DuplicateMapping(0, *pte));
             }
             *pte = PTE::new(pa + offset, PTE_FLAGS.fill(PTE_V.set(perm, 1)));
         }
@@ -507,10 +507,10 @@ impl<T: PagingSchema> IndexMut<usize> for PageTable<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PageTableError {
     InvalidPageTable,
-    InvalidPTE(PTE),
+    InvalidPTE(usize, PTE),
     InvalidVirtualAddress,
     InvalidPageLevel,
     AllocFailed,
     InvalidMapSize,
-    DuplicateMapping(PTE),
+    DuplicateMapping(usize, PTE),
 }
