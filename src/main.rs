@@ -62,6 +62,7 @@ use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use riscv_rt::entry;
 use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
+use rv64::read_linker_symbol;
 use xv6::arch;
 use xv6::arch::interrupt;
 use xv6::arch::trap;
@@ -69,12 +70,6 @@ use xv6::io;
 use xv6::mem;
 use xv6::panic_println;
 use xv6::println;
-
-extern "C" {
-    static _sheap: u8;
-    static _heap_size: u8;
-    static _max_hart_id: u8;
-}
 
 #[export_name = "_mp_hook"]
 pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
@@ -131,7 +126,10 @@ extern "C" fn main() -> ! {
     let cpu_id = arch::cpuid();
     if cpu_id == 0 {
         io::console::init();
-        println!("\nxv6 kernel is booting\n");
+        println!(
+            "\nxv6 kernel is booting, max {} harts supported\n",
+            unsafe { read_linker_symbol!(_max_hart_id) }
+        );
         unsafe {
             mem::init();
             mem::init_hart();
