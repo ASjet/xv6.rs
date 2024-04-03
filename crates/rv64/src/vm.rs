@@ -362,7 +362,7 @@ pub trait PageAllocator {
     unsafe fn pfree(&self, page: PhysAddr);
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[repr(transparent)]
 pub struct PageTable<T: PagingSchema> {
     table: [PTE; PAGE_SIZE / size_of::<PTE>()],
@@ -390,19 +390,17 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 return Err(PageTableError::InvalidPTE(l, pte));
             }
 
-            if pte.xwr() == 0b000 {
-                pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+            pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+
+            if pte.xwr() != 0b000 {
+                if !pte.readable() {
+                    return Err(PageTableError::InvalidPTE(l, pte));
+                }
                 offset = level.page_offset.get(va.into());
                 break;
             }
 
-            if !pte.readable() {
-                return Err(PageTableError::InvalidPTE(l, pte));
-            }
-
-            pa = pte.addr();
-
-            cur_pt = unsafe { PageTable::from_pa(pa) };
+            cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
         }
 
         assert!(pa != PhysAddr::null());
@@ -447,7 +445,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                         let page = allocator
                             .palloc(page_width)
                             .ok_or(PageTableError::AllocFailed)?;
-                        page.memset(0, 1 << usize::from(page_width) - 3);
+                        page.memset(0usize, 1 << usize::from(page_width));
                         *pte = PTE::new(page, PTE_V.get(PTE_FLAGS.mask()));
                     }
                 } else {
@@ -485,6 +483,27 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
         Ok(())
     }
+
+    pub fn dump(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+        cur_depth: usize,
+        max_depth: usize,
+    ) -> core::fmt::Result {
+        let offset = cur_depth * 4;
+        for (i, pte) in self.table.iter().enumerate() {
+            if pte.valid() {
+                write!(f, "{} {:offset$}PTE[{}] = {:?}\n", cur_depth, "", i, pte)?;
+                if pte.xwr() == 0b000 {
+                    let pt = unsafe { PageTable::<T>::from_pa(pte.addr()) };
+                    if cur_depth < max_depth {
+                        pt.dump(f, cur_depth + 1, max_depth)?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<T: PagingSchema> Index<usize> for PageTable<T> {
@@ -500,6 +519,13 @@ impl<T: PagingSchema> IndexMut<usize> for PageTable<T> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.table[index]
+    }
+}
+
+impl<T: PagingSchema + 'static> Debug for PageTable<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "\n")?;
+        self.dump(f, 0, 1)
     }
 }
 

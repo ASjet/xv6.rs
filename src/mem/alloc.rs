@@ -92,7 +92,7 @@ impl LinkListAllocator {
     /// call to kalloc().  (The exception is when
     /// initializing the allocator; see kinit above.)
     pub unsafe fn kfree(&self, page: PhysAddr) {
-        if page.page_offset() != 0 || page < self.heap_start || page >= self.heap_end {
+        if page.page_offset() != 0 || page < self.heap_start || page > self.heap_end {
             panic!("kfree: invalid page: {:?}", page);
         }
 

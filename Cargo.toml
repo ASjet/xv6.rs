@@ -13,7 +13,7 @@ edition = "2021"
 panic = "abort" # disable stack unwinding on panic
 
 [workspace]
-members = ["crates/rv64"]
+members = ["crates/rv64", "crates/riscv-rt"]
 default-members = ["."]
 resolver = "2"
 
@@ -35,5 +35,5 @@ name = "xv6"
 bench = false
 
 [dependencies]
-riscv-rt = "0.12.2"
+riscv-rt = { path = "crates/riscv-rt" }
 rv64 = { path = "crates/rv64" }

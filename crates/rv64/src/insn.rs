@@ -394,3 +394,18 @@ macro_rules! naked_insn {
         }
     };
 }
+
+#[macro_export]
+macro_rules! read_linker_symbol {
+    ($symbol:ident) => {
+        {
+            let r: usize;
+            core::arch::asm!(
+                concat!("lui {0}, %hi(", stringify!($symbol), ")"),
+                concat!("add {0}, {0}, %lo(", stringify!($symbol), ")"),
+                out(reg) r
+            );
+            r
+        }
+    };
+}
