@@ -35,8 +35,7 @@ pub fn init() {
         let heap_start = &_heap_start as *const u8 as usize;
         let text_start = &_text_start as *const u8 as usize; // Should equal to def::KERNEL_BASE
         let text_end = &_text_end as *const u8 as usize;
-        // FIXME: define trampoline in link script
-        // let trampoline = &_trampoline as *const u8 as usize;
+        let trampoline = &_trampoline as *const u8 as usize;
 
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
@@ -108,13 +107,14 @@ pub fn init() {
 
         // map the trampoline for trap entry/exit to
         // the highest virtual address in the kernel.
-        // map_pages_log(
-        //     Sv39::max_va().into() - PAGE_SIZE,
-        //     PAGE_SIZE,
-        //     trampoline,
-        //     perm_rx,
-        //     "map trampoline failed",
-        // );
+        map_pages_log(
+            "trampoline",
+            usize::from(Sv39::max_va()) - PAGE_SIZE,
+            PAGE_SIZE,
+            trampoline,
+            perm_rx,
+            "map trampoline failed",
+        );
 
         KPGTBL = kpt;
 
