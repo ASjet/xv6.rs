@@ -1,8 +1,11 @@
 use super::def;
-use crate::mem::alloc::ALLOCATOR;
 use crate::println;
+use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
-use rv64::vm::{self, PageTable, PagingSchema, PhysAddr, Sv39, VirtAddr, PAGE_SIZE};
+use rv64::{
+    insn::s,
+    vm::{self, PageTable, PagingSchema, PhysAddr, Sv39, VirtAddr, PAGE_SIZE, PA_PPN},
+};
 
 extern "C" {
     #[link_name = "_stext"]
@@ -13,9 +16,12 @@ extern "C" {
     static _heap_start: u8;
     #[link_name = "_eheap"]
     static _heap_end: u8;
+    #[link_name = "_sstack"]
+    static _stack_start: u8;
+    #[link_name = "_estack"]
+    static _stack_end: u8;
     #[link_name = "trampoline"]
     static _trampoline: u8;
-
 }
 
 static mut KPGTBL: *mut PageTable<Sv39> = core::ptr::null_mut();
@@ -32,14 +38,28 @@ pub fn init() {
     let perm_rw: usize = (vm::PTE_R | vm::PTE_W).into();
     let perm_rx: usize = (vm::PTE_R | vm::PTE_X).into();
     unsafe {
-        let heap_start = &_heap_start as *const u8 as usize;
         let text_start = &_text_start as *const u8 as usize; // Should equal to def::KERNEL_BASE
         let text_end = &_text_end as *const u8 as usize;
+        let heap_start = &_heap_start as *const u8 as usize;
+        let heap_end = &_heap_end as *const u8 as usize;
+        let stack_start = &_stack_start as *const u8 as usize;
+        let stack_end = &_stack_end as *const u8 as usize;
         let trampoline = &_trampoline as *const u8 as usize;
+
+        println!(
+            "heap(0x{:x}): {:?} => {:?}\nstack(0x{:x}): {:?} => {:?}",
+            heap_end - heap_start,
+            PhysAddr::from(heap_start),
+            PhysAddr::from(heap_end),
+            stack_start - stack_end,
+            PhysAddr::from(stack_end),
+            PhysAddr::from(stack_start),
+        );
 
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
         let kpt = PageTable::<Sv39>::from_pa(page);
+        println!("new page table at {:?}", page);
 
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);
@@ -99,7 +119,7 @@ pub fn init() {
         map_pages_log(
             "RAM",
             heap_start,
-            def::PHY_STOP - heap_start,
+            stack_start - heap_start,
             heap_start,
             perm_rw,
             "map physical RAM failed",
@@ -116,8 +136,8 @@ pub fn init() {
             "map trampoline failed",
         );
 
-        KPGTBL = kpt;
-
         // TODO: proc::map_stacks()
+
+        KPGTBL = kpt;
     }
 }
