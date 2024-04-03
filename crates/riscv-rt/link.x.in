@@ -95,6 +95,7 @@ SECTIONS
     *(.trap.rust);
     *(.text.abort);
     *(.text .text.*);
+    . = ALIGN(0x1000);
   } > REGION_TEXT
 
   .rodata : ALIGN(4)
