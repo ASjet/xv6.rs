@@ -390,19 +390,17 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 return Err(PageTableError::InvalidPTE(l, pte));
             }
 
-            if pte.xwr() == 0b000 {
-                pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+            pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+
+            if pte.xwr() != 0b000 {
+                if !pte.readable() {
+                    return Err(PageTableError::InvalidPTE(l, pte));
+                }
                 offset = level.page_offset.get(va.into());
                 break;
             }
 
-            if !pte.readable() {
-                return Err(PageTableError::InvalidPTE(l, pte));
-            }
-
-            pa = pte.addr();
-
-            cur_pt = unsafe { PageTable::from_pa(pa) };
+            cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
         }
 
         assert!(pa != PhysAddr::null());
