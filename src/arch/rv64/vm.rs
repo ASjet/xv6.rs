@@ -45,66 +45,76 @@ pub fn init() {
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);
 
+        let mut map_pages_log =
+            |name: &str, va: usize, size: usize, pa: usize, perm: usize, err_msg: &str| {
+                let va = VirtAddr::from(va);
+                let pa = PhysAddr::from(pa);
+                kpt.map_pages(va, size, pa, perm, alloc).expect(err_msg);
+                println!(
+                    "map 0x{:x} {:?} => {:?} as {}({:03b})",
+                    size, pa, va, name, perm
+                );
+            };
+
         // UART registers
-        kpt.map_pages(
-            VirtAddr::from(def::UART0),
+        map_pages_log(
+            "UART0",
+            def::UART0,
             PAGE_SIZE,
-            PhysAddr::from(def::UART0),
+            def::UART0,
             perm_rw,
-            alloc,
-        )
-        .expect("map UART0 failed");
+            "map UART0 failed",
+        );
 
         // virtio mmio disk interface
-        kpt.map_pages(
-            VirtAddr::from(def::VIRTIO0),
+        map_pages_log(
+            "VIRTIO",
+            def::VIRTIO0,
             PAGE_SIZE,
-            PhysAddr::from(def::VIRTIO0),
+            def::VIRTIO0,
             perm_rw,
-            alloc,
-        )
-        .expect("map VIRTIO0 failed");
+            "map VIRTIO0 failed",
+        );
 
         // PLIC
-        kpt.map_pages(
-            VirtAddr::from(def::PLIC),
+        map_pages_log(
+            "PLIC",
+            def::PLIC,
             0x400000,
-            PhysAddr::from(def::PLIC),
+            def::PLIC,
             perm_rw,
-            alloc,
-        )
-        .expect("map PLIC failed");
+            "map PLIC failed",
+        );
 
         // map kernel text executable and read-only.
-        kpt.map_pages(
-            VirtAddr::from(text_start),
+        map_pages_log(
+            "kernel text",
+            text_start,
             text_end - text_start,
-            PhysAddr::from(text_start),
+            text_start,
             perm_rx,
-            alloc,
-        )
-        .expect("map kernel text failed");
+            "map kernel text failed",
+        );
 
         // map kernel data and the physical RAM we'll make use of.
-        kpt.map_pages(
-            VirtAddr::from(heap_start),
+        map_pages_log(
+            "RAM",
+            heap_start,
             def::PHY_STOP - heap_start,
-            PhysAddr::from(heap_start),
+            heap_start,
             perm_rw,
-            alloc,
-        )
-        .expect("map physical RAM failed");
+            "map physical RAM failed",
+        );
 
         // map the trampoline for trap entry/exit to
         // the highest virtual address in the kernel.
-        // kpt.map_pages(
-        //     Sv39::max_va() - PAGE_SIZE,
+        // map_pages_log(
+        //     Sv39::max_va().into() - PAGE_SIZE,
         //     PAGE_SIZE,
-        //     PhysAddr::from(trampoline),
+        //     trampoline,
         //     perm_rx,
-        //     alloc,
-        // )
-        // .expect("map trampoline failed");
+        //     "map trampoline failed",
+        // );
 
         KPGTBL = kpt;
 
