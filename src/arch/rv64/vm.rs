@@ -1,14 +1,18 @@
-use core::ptr::addr_of;
-
 use super::def;
 use crate::mem::alloc::ALLOCATOR;
+use crate::println;
+use core::ptr::addr_of;
 use rv64::vm::{self, PageTable, PagingSchema, PhysAddr, Sv39, VirtAddr, PAGE_SIZE};
 
 extern "C" {
+    #[link_name = "_stext"]
+    static _text_start: u8;
+    #[link_name = "_etext"]
+    static _text_end: u8;
     #[link_name = "_sheap"]
     static _heap_start: u8;
-    #[link_name = "_heap_size"]
-    static _heap_size: u8;
+    #[link_name = "_eheap"]
+    static _heap_end: u8;
     #[link_name = "trampoline"]
     static _trampoline: u8;
 
@@ -19,7 +23,7 @@ static mut KPGTBL: *mut PageTable<Sv39> = core::ptr::null_mut();
 pub fn heap_range() -> (PhysAddr, PhysAddr) {
     unsafe {
         let start = &_heap_start as *const u8 as usize;
-        let end = start + &_heap_size as *const u8 as usize;
+        let end = &_heap_end as *const u8 as usize;
         (PhysAddr::from(start), PhysAddr::from(end))
     }
 }
@@ -29,6 +33,8 @@ pub fn init() {
     let perm_rx: usize = (vm::PTE_R | vm::PTE_X).into();
     unsafe {
         let heap_start = &_heap_start as *const u8 as usize;
+        let text_start = &_text_start as *const u8 as usize; // Should equal to def::KERNEL_BASE
+        let text_end = &_text_end as *const u8 as usize;
         // FIXME: define trampoline in link script
         // let trampoline = &_trampoline as *const u8 as usize;
 
@@ -71,9 +77,9 @@ pub fn init() {
 
         // map kernel text executable and read-only.
         kpt.map_pages(
-            VirtAddr::from(def::KERNEL_BASE),
-            heap_start - def::KERNEL_BASE,
-            PhysAddr::from(def::KERNEL_BASE),
+            VirtAddr::from(text_start),
+            text_end - text_start,
+            PhysAddr::from(text_start),
             perm_rx,
             alloc,
         )
@@ -83,12 +89,11 @@ pub fn init() {
         kpt.map_pages(
             VirtAddr::from(heap_start),
             def::PHY_STOP - heap_start,
-            PhysAddr::from(def::KERNEL_BASE),
+            PhysAddr::from(heap_start),
             perm_rw,
             alloc,
         )
         .expect("map physical RAM failed");
-        // FIXME: DuplicateMapping(0, PTE(0x80013000,0000000101))
 
         // map the trampoline for trap entry/exit to
         // the highest virtual address in the kernel.
