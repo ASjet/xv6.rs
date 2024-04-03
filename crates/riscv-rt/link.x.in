@@ -138,7 +138,7 @@ SECTIONS
   {
     _sheap = .;
     . += _heap_size;
-    . = ALIGN(4);
+    . = ALIGN(0x1000);
     _eheap = .;
   } > REGION_HEAP
 

@@ -30,13 +30,16 @@ pub fn heap_range() -> (PhysAddr, PhysAddr) {
     unsafe {
         let start = &_heap_start as *const u8 as usize;
         let end = &_heap_end as *const u8 as usize;
-        (PhysAddr::from(start), PhysAddr::from(end))
+        (
+            PhysAddr::from(start),
+            PhysAddr::from(end).page_rounddown() - 1,
+        )
     }
 }
 
-pub fn init() {
-    let perm_rw: usize = (vm::PTE_R | vm::PTE_W).into();
-    let perm_rx: usize = (vm::PTE_R | vm::PTE_X).into();
+pub fn init_mapping() {
+    let perm_rw: usize = (vm::PTE_R | vm::PTE_W).mask();
+    let perm_rx: usize = (vm::PTE_R | vm::PTE_X).mask();
     unsafe {
         let text_start = &_text_start as *const u8 as usize; // Should equal to def::KERNEL_BASE
         let text_end = &_text_end as *const u8 as usize;
@@ -59,7 +62,6 @@ pub fn init() {
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
         let kpt = PageTable::<Sv39>::from_pa(page);
-        println!("new page table at {:?}", page);
 
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);
@@ -118,9 +120,9 @@ pub fn init() {
         // map kernel data and the physical RAM we'll make use of.
         map_pages_log(
             "RAM",
-            heap_start,
-            stack_start - heap_start,
-            heap_start,
+            text_end,
+            stack_start - text_end,
+            text_end,
             perm_rw,
             "map physical RAM failed",
         );
@@ -140,4 +142,24 @@ pub fn init() {
 
         KPGTBL = kpt;
     }
+}
+
+pub fn enable_paging() {
+    let addr = unsafe { KPGTBL as usize };
+    // make sure for RAM mapping is working
+    assert_eq!(
+        usize::from(addr),
+        usize::from(unsafe {
+            (*KPGTBL)
+                .virt_to_phys(VirtAddr::from(usize::from(addr)))
+                .expect("virt_to_phys failed")
+        })
+    );
+    println!(
+        "enable kernel page table at 0x{:x} on hart {}",
+        addr,
+        super::cpuid()
+    );
+    unsafe { s::satp.set(s::SatpMode::Sv39, 0, PA_PPN.get(addr)) }
+    s::sfence_vma();
 }
