@@ -28,8 +28,8 @@ static mut KPGTBL: *mut PageTable<Sv39> = core::ptr::null_mut();
 
 pub fn heap_range() -> (PhysAddr, PhysAddr) {
     unsafe {
-        let start = &_heap_start as *const u8 as usize;
-        let end = &_heap_end as *const u8 as usize;
+        let start = addr_of!(_heap_start) as usize;
+        let end = addr_of!(_heap_end) as usize;
         (
             PhysAddr::from(start),
             PhysAddr::from(end).page_rounddown() - 1,
@@ -41,13 +41,13 @@ pub fn init_mapping() {
     let perm_rw: usize = (vm::PTE_R | vm::PTE_W).mask();
     let perm_rx: usize = (vm::PTE_R | vm::PTE_X).mask();
     unsafe {
-        let text_start = &_text_start as *const u8 as usize; // Should equal to def::KERNEL_BASE
-        let text_end = &_text_end as *const u8 as usize;
-        let heap_start = &_heap_start as *const u8 as usize;
-        let heap_end = &_heap_end as *const u8 as usize;
-        let stack_start = &_stack_start as *const u8 as usize;
-        let stack_end = &_stack_end as *const u8 as usize;
-        let trampoline = &_trampoline as *const u8 as usize;
+        let text_start = addr_of!(_text_start) as usize; // Should equal to def::KERNEL_BASE
+        let text_end = addr_of!(_text_end) as usize;
+        let heap_start = addr_of!(_heap_start) as usize;
+        let heap_end = addr_of!(_heap_end) as usize;
+        let stack_start = addr_of!(_stack_start) as usize;
+        let stack_end = addr_of!(_stack_end) as usize;
+        let trampoline = addr_of!(_trampoline) as usize;
 
         println!(
             "heap(0x{:x}): {:?} => {:?}\nstack(0x{:x}): {:?} => {:?}",
@@ -61,7 +61,7 @@ pub fn init_mapping() {
 
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
-        let kpt = PageTable::<Sv39>::from_pa(page);
+        let kpt = page.as_mut::<PageTable<Sv39>>().unwrap();
 
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);

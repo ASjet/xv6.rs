@@ -258,6 +258,22 @@ impl PhysAddr {
             *(ptr as *mut T) = value;
         }
     }
+
+    pub const fn as_ptr<T>(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub const fn as_mut_ptr<T>(&self) -> *mut T {
+        self.0 as *mut T
+    }
+
+    pub const unsafe fn as_ref<T>(&self) -> Option<&'static T> {
+        self.as_ptr::<T>().as_ref()
+    }
+
+    pub unsafe fn as_mut<T>(&self) -> Option<&'static mut T> {
+        self.as_mut_ptr::<T>().as_mut()
+    }
 }
 
 impl Debug for PhysAddr {
@@ -319,6 +335,22 @@ impl VirtAddr {
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
+
+    pub const fn as_ptr<T>(&self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub const fn as_mut_ptr<T>(&self) -> *mut T {
+        self.0 as *mut T
+    }
+
+    pub const unsafe fn as_ref<T>(&self) -> Option<&'static T> {
+        self.as_ptr::<T>().as_ref()
+    }
+
+    pub unsafe fn as_mut<T>(&self) -> Option<&'static mut T> {
+        self.as_mut_ptr::<T>().as_mut()
+    }
 }
 
 impl Debug for VirtAddr {
@@ -370,10 +402,6 @@ pub struct PageTable<T: PagingSchema> {
 }
 
 impl<T: PagingSchema + 'static> PageTable<T> {
-    pub unsafe fn from_pa(pa: PhysAddr) -> &'static mut Self {
-        &mut *(usize::from(pa) as *mut PageTable<T>)
-    }
-
     pub fn virt_to_phys(&self, va: VirtAddr) -> Result<PhysAddr, PageTableError> {
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
@@ -400,7 +428,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 break;
             }
 
-            cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
+            cur_pt = unsafe { pte.addr().as_ref() }.ok_or(PageTableError::InvalidPTE(l, pte))?
         }
 
         assert!(pa != PhysAddr::null());
@@ -453,7 +481,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 }
             }
 
-            cur_pt = unsafe { PageTable::from_pa(pte.addr()) };
+            cur_pt = unsafe { pte.addr().as_mut() }.ok_or(PageTableError::InvalidPTE(l, *pte))?
         }
 
         return Err(PageTableError::InvalidPageTable);
@@ -494,11 +522,12 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         for (i, pte) in self.table.iter().enumerate() {
             if pte.valid() {
                 write!(f, "{} {:offset$}PTE[{}] = {:?}\n", cur_depth, "", i, pte)?;
-                if pte.xwr() == 0b000 {
-                    let pt = unsafe { PageTable::<T>::from_pa(pte.addr()) };
-                    if cur_depth < max_depth {
-                        pt.dump(f, cur_depth + 1, max_depth)?;
-                    }
+                if pte.xwr() == 0b000 && cur_depth < max_depth {
+                    unsafe { pte.addr().as_mut::<Self>() }.unwrap().dump(
+                        f,
+                        cur_depth + 1,
+                        max_depth,
+                    )?;
                 }
             }
         }
