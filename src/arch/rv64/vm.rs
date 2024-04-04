@@ -61,7 +61,7 @@ pub fn init_mapping() {
 
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
-        let kpt = PageTable::<Sv39>::from_pa(page);
+        let kpt = page.as_mut::<PageTable<Sv39>>().unwrap();
 
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);
