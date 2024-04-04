@@ -428,11 +428,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 break;
             }
 
-            cur_pt = unsafe {
-                pte.addr()
-                    .as_ref()
-                    .ok_or(PageTableError::InvalidPTE(l, pte))?
-            }
+            cur_pt = unsafe { pte.addr().as_ref() }.ok_or(PageTableError::InvalidPTE(l, pte))?
         }
 
         assert!(pa != PhysAddr::null());
@@ -485,11 +481,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 }
             }
 
-            cur_pt = unsafe {
-                pte.addr()
-                    .as_mut()
-                    .ok_or(PageTableError::InvalidPTE(l, *pte))?
-            }
+            cur_pt = unsafe { pte.addr().as_mut() }.ok_or(PageTableError::InvalidPTE(l, *pte))?
         }
 
         return Err(PageTableError::InvalidPageTable);
@@ -530,11 +522,12 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         for (i, pte) in self.table.iter().enumerate() {
             if pte.valid() {
                 write!(f, "{} {:offset$}PTE[{}] = {:?}\n", cur_depth, "", i, pte)?;
-                if pte.xwr() == 0b000 {
-                    let pt = unsafe { pte.addr().as_mut::<Self>().unwrap() };
-                    if cur_depth < max_depth {
-                        pt.dump(f, cur_depth + 1, max_depth)?;
-                    }
+                if pte.xwr() == 0b000 && cur_depth < max_depth {
+                    unsafe { pte.addr().as_mut::<Self>() }.unwrap().dump(
+                        f,
+                        cur_depth + 1,
+                        max_depth,
+                    )?;
                 }
             }
         }
