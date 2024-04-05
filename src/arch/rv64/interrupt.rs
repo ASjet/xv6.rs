@@ -40,11 +40,16 @@ pub fn plic_complete(hart: usize, irq: u32) {
     PLIC_SCLAIM.index(hart).write(irq);
 }
 
+pub type IRQ = u32;
+
+pub enum Source {
+    Unknown(s::Scause), // The source is not device
+    Timer,              // Timer interrupt
+    Device(IRQ),        // Device interrupt, the value is the IRQ number
+}
+
 /// Check if it's an external interrupt or software interrupt, and handle it.
-/// returns `2` if timer interrupt,
-/// - `1` if other device,
-/// - `0` if not recognized.
-fn dev_intr() -> i32 {
+pub fn dev_intr() -> Source {
     let scause = s::scause.read();
     let hart = arch::cpuid();
 
@@ -65,20 +70,19 @@ fn dev_intr() -> i32 {
                 // the SSIP bit in sip.
                 unsafe { s::sip.clear_mask(s::SIP_SSIP) };
 
-                return 2;
+                return Source::Timer;
             }
             ScauseInterrupt::SupervisorExternalInterrupt => {
                 // This is a supervisor external interrupt, via PLIC.
                 // irq indicates which device interrupted.
 
+                #[allow(unused_variables)]
                 match irq as usize {
                     def::UART0_IRQ => {
                         // TODO: uartintr();
-                        return 1;
                     }
                     def::VIRTIO0_IRQ => {
                         // TODO: virtio_disk_intr();
-                        return 1;
                     }
                     irq => {
                         println!("unexpected interrupt irq={}", irq);
@@ -90,14 +94,14 @@ fn dev_intr() -> i32 {
                 if irq != 0 {
                     plic_complete(hart, irq);
                 }
-                return 1;
+                return Source::Device(irq);
             }
             other => {
                 println!("unexpected interrupt scause={:x?}", other);
             }
         }
     } else {
-        // Non-interrupt
+        // Exception
     }
-    return 0;
+    return Source::Unknown(scause);
 }

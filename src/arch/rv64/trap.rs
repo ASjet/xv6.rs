@@ -167,17 +167,16 @@ global_asm!(
 extern "C" fn kernel_trap() {
     let sepc = s::sepc.read();
     let sstatus = s::sstatus.read();
-    let scause = s::scause.read();
 
     assert!(
-        s::SSTATUS_SPP.get(sstatus) as u8 == insn::PrivilegeLevel::S.into(),
+        sstatus.spp() == insn::PrivilegeLevel::S,
         "kernel trap: not from supervisor mode"
     );
     assert!(!arch::is_intr_on(), "kernel_trap: interrupts enabled");
 
+    use interrupt::Source;
     match interrupt::dev_intr() {
-        0 => {
-            // FIXME: panic here with scause 1 or 4
+        Source::Unknown(scause) => {
             panic!(
                 "kernel_trap: scause: {:x?}, sep: {:x?}, stval: {:x?}",
                 scause,
@@ -185,14 +184,14 @@ extern "C" fn kernel_trap() {
                 s::stval.read()
             );
         }
-        2 => {
+        Source::Timer => {
             // give up the CPU if this is a timer interrupt.
             if arch::cpuid() != 0 {
                 // TODO: make sure cpu state is RUNNING
                 // TODO: yield();
             }
         }
-        _ => {
+        Source::Device(_) => {
             // Ignored
         }
     }
