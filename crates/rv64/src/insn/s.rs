@@ -1,8 +1,7 @@
-use int_enum::IntEnum;
-
 use super::{Mask, PrivilegeLevel, RegisterRW};
 use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
 use core::arch::asm;
+use int_enum::IntEnum;
 
 #[inline]
 pub fn sfence_vma() {
@@ -82,40 +81,94 @@ csr_reg_rw!(
     sepc
 );
 
-csr_reg_ro!(
+csr_reg_rw!(
     /// Supervisor trap cause
-    scause
+    scause, Scause
 );
-pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63);
-pub const SCAUSE_EXCEPT_INT: Mask = Mask::new(63, 0);
-pub const SCAUSE_EXCEPT: Mask = Mask::new(6, 0);
-#[derive(Debug, IntEnum)]
-#[repr(u8)]
-pub enum ScauseExceptInt {
-    Reserved = 0,
-    SupervisorSoftwareInterrupt = 1,
-    SupervisorTimerInterrupt = 5,
-    SupervisorExternalInterrupt = 9,
-    CounterOverflowInterrupt = 13,
+pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63); // 1: interrupt, 0: exception
+pub const SCAUSE_EXCEPTION: Mask = Mask::new(63, 0);
+#[derive(Debug)]
+pub enum ScauseInterrupt {
+    Reserved(usize),
+    PlatformUse(usize),
+    SupervisorSoftwareInterrupt,
+    SupervisorTimerInterrupt,
+    SupervisorExternalInterrupt,
+    CounterOverflowInterrupt,
 }
-#[derive(Debug, IntEnum)]
-#[repr(u8)]
-pub enum ScauseExcept {
-    InsnAddrMisaligned = 0,
-    InsnAccessFault = 1,
-    IllegalInsn = 2,
-    Breakpoint = 3,
-    LoadAddrMisaligned = 4,
-    LoadAccessFault = 5,
-    StoreAddrMisaligned = 6,
-    StoreAccessFault = 7,
-    EnvCallFromU = 8,
-    EnvCallFromS = 9,
-    InsnPageFault = 12,
-    LoadPageFault = 13,
-    StorePageFault = 15,
-    SoftwareCheck = 18,
-    HardwareError = 19,
+#[derive(Debug)]
+pub enum ScauseException {
+    Reserved(usize),
+    CustomUse(usize),
+    InsnAddrMisaligned,
+    InsnAccessFault,
+    IllegalInsn,
+    Breakpoint,
+    LoadAddrMisaligned,
+    LoadAccessFault,
+    StoreAddrMisaligned,
+    StoreAccessFault,
+    EnvCallFromU,
+    EnvCallFromS,
+    InsnPageFault,
+    LoadPageFault,
+    StorePageFault,
+    SoftwareCheck,
+    HardwareError,
+}
+impl Scause {
+    pub fn is_interrupt(&self) -> bool {
+        SCAUSE_INTERRUPT.get(self.0) == 1
+    }
+
+    pub fn is_exception(&self) -> bool {
+        SCAUSE_INTERRUPT.get(self.0) == 0
+    }
+
+    pub fn interrupt(&self) -> ScauseInterrupt {
+        let except = SCAUSE_EXCEPTION.get(self.0);
+        match except {
+            0 => ScauseInterrupt::Reserved(except),
+            1 => ScauseInterrupt::SupervisorSoftwareInterrupt,
+            2..=4 => ScauseInterrupt::Reserved(except),
+            5 => ScauseInterrupt::SupervisorTimerInterrupt,
+            6..=8 => ScauseInterrupt::Reserved(except),
+            9 => ScauseInterrupt::SupervisorExternalInterrupt,
+            10..=12 => ScauseInterrupt::Reserved(except),
+            13 => ScauseInterrupt::CounterOverflowInterrupt,
+            14..=15 => ScauseInterrupt::Reserved(except),
+            _ => ScauseInterrupt::PlatformUse(except),
+        }
+    }
+
+    pub fn exception(&self) -> ScauseException {
+        let except = SCAUSE_EXCEPTION.get(self.0);
+        match except {
+            0 => ScauseException::InsnAddrMisaligned,
+            1 => ScauseException::InsnAccessFault,
+            2 => ScauseException::IllegalInsn,
+            3 => ScauseException::Breakpoint,
+            4 => ScauseException::LoadAddrMisaligned,
+            5 => ScauseException::LoadAccessFault,
+            6 => ScauseException::StoreAddrMisaligned,
+            7 => ScauseException::StoreAccessFault,
+            8 => ScauseException::EnvCallFromU,
+            9 => ScauseException::EnvCallFromS,
+            10..=11 => ScauseException::Reserved(except),
+            12 => ScauseException::InsnPageFault,
+            13 => ScauseException::LoadPageFault,
+            14..=14 => ScauseException::Reserved(except),
+            15 => ScauseException::StorePageFault,
+            16..=17 => ScauseException::Reserved(except),
+            18 => ScauseException::SoftwareCheck,
+            19 => ScauseException::HardwareError,
+            20..=23 => ScauseException::Reserved(except),
+            24..=31 => ScauseException::CustomUse(except),
+            32..=47 => ScauseException::Reserved(except),
+            48..=63 => ScauseException::CustomUse(except),
+            _ => ScauseException::Reserved(except),
+        }
+    }
 }
 
 csr_reg_ro!(

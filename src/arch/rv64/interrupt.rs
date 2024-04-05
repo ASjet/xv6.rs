@@ -48,13 +48,13 @@ fn dev_intr() -> i32 {
     let scause = s::scause.read();
     let hart = arch::cpuid();
 
-    if s::SCAUSE_INTERRUPT.get(scause) != 0 {
+    if scause.is_interrupt() {
         // Interrupt
-        use s::ScauseExceptInt;
+        use s::ScauseInterrupt;
 
         let irq = plic_claim(hart);
-        match ScauseExceptInt::try_from(except as u8).unwrap_or(ScauseExceptInt::Reserved) {
-            ScauseExceptInt::SupervisorSoftwareInterrupt => {
+        match scause.interrupt() {
+            ScauseInterrupt::SupervisorSoftwareInterrupt => {
                 // Software interrupt from a machine-mode timer interrupt,
                 // forwarded by timervec in kernelvec.S.
                 if hart == 0 {
@@ -67,7 +67,7 @@ fn dev_intr() -> i32 {
 
                 return 2;
             }
-            ScauseExceptInt::SupervisorExternalInterrupt => {
+            ScauseInterrupt::SupervisorExternalInterrupt => {
                 // This is a supervisor external interrupt, via PLIC.
                 // irq indicates which device interrupted.
 
