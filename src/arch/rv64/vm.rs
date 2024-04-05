@@ -4,7 +4,7 @@ use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
 use rv64::{
     insn::s,
-    vm::{self, PhysAddr, VirtAddr, PA_PPN},
+    vm::{self, PhysAddr, VirtAddr},
 };
 
 extern "C" {
@@ -162,6 +162,6 @@ pub fn enable_paging() {
         addr,
         super::cpuid()
     );
-    unsafe { s::satp.set(s::SatpMode::Sv39, 0, PA_PPN.get(addr)) }
+    unsafe { s::satp.set(s::SatpMode::Sv39, 0, addr) }
     s::sfence_vma();
 }

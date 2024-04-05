@@ -1,5 +1,5 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
+use crate::{csr_reg_ro, csr_reg_rw, naked_insn, vm::PA_PPN};
 use core::arch::asm;
 use int_enum::IntEnum;
 
@@ -211,7 +211,11 @@ impl satp {
     }
 
     #[inline]
-    pub unsafe fn set(&self, mode: SatpMode, asid: usize, ppn: usize) {
-        self.write((SATP_MODE.fill(mode as usize)) | (SATP_ASID.fill(asid)) | (SATP_PPN.fill(ppn)));
+    pub unsafe fn set(&self, mode: SatpMode, asid: usize, pa: usize) {
+        self.write(
+            (SATP_MODE.fill(mode as usize))
+                | (SATP_ASID.fill(asid))
+                | (SATP_PPN.fill(PA_PPN.get(pa))),
+        );
     }
 }
