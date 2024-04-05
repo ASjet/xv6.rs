@@ -1,5 +1,4 @@
 use core::mem::size_of;
-
 use int_enum::IntEnum;
 
 /// Machine Privileged Level
@@ -120,46 +119,46 @@ impl From<Mask> for usize {
     }
 }
 
-pub trait RegisterRW {
+pub trait RegisterRW<T: From<usize> + Into<usize>> {
     /// Read the value of the register.
-    fn read(&self) -> usize;
+    fn read(&self) -> T;
 
     /// Write the value to the register.
-    unsafe fn write(&self, value: usize);
+    unsafe fn write(&self, value: T);
 
     /// Read the value of the register at the mask.
     #[inline]
     fn read_mask(&self, mask: Mask) -> usize {
-        mask.get(self.read())
+        mask.get(self.read().into())
     }
 
     /// Write the value of the register at the mask.
     #[inline]
     unsafe fn write_mask(&self, mask: Mask, value: usize) {
-        self.write(mask.set(self.read(), value))
+        self.write(mask.set(self.read().into(), value).into())
     }
 
     /// Set all bits at the mask in the register.
     #[inline]
     unsafe fn set_mask(&self, mask: Mask) {
-        self.write(mask.set_all(self.read()))
+        self.write(mask.set_all(self.read().into()).into())
     }
 
     /// Clear all bits at the mask in the register.
     #[inline]
     unsafe fn clear_mask(&self, mask: Mask) {
-        self.write(mask.clear_all(self.read()))
+        self.write(mask.clear_all(self.read().into()).into())
     }
 }
 
-pub trait RegisterRO {
+pub trait RegisterRO<T: From<usize> + Into<usize>> {
     /// Read the value of the register.
-    fn read(&self) -> usize;
+    fn read(&self) -> T;
 
     /// Read the value of the register at the mask.
     #[inline]
-    fn read_mask(&self, mask: Mask) -> usize {
-        mask.get(self.read())
+    fn read_mask(&self, mask: Mask) -> T {
+        mask.get(self.read().into()).into()
     }
 }
 
@@ -170,7 +169,7 @@ macro_rules! mv_reg_rw {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRW for $reg {
+        impl crate::insn::RegisterRW<usize> for $reg {
             #[inline]
             fn read(&self) -> usize {
                 let r: usize;
@@ -194,32 +193,52 @@ macro_rules! mv_reg_rw {
             }
         }
     };
-    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+    ($(#[$m:meta])* $reg:ident, $val:ident $(,$($options:ident),*)?) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        #[repr(transparent)]
+        #[derive(Debug, Clone, Copy)]
+        pub struct $val(usize);
+
+        impl From<$val> for usize {
+            #[inline]
+            fn from(v: $val) -> usize {
+                v.0
+            }
+        }
+
+        impl From<usize> for $val {
+            #[inline]
+            fn from(v: usize) -> $val {
+                $val(v)
+            }
+        }
+
         $(#[$m])*
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRW for $reg {
+        impl crate::insn::RegisterRW<$val> for $reg {
             #[inline]
-            fn read(&self) -> usize {
+            fn read(&self) -> $val {
                 let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
-                        out(reg) r,
-                        options($($options),*)
+                        out(reg) r
+                        $(,options($($options),*))?
                     )
                 };
-                r
+                $val(r)
             }
 
             #[inline]
-            unsafe fn write(&self, x: usize) {
+            unsafe fn write(&self, x: $val) {
                 unsafe {
                     core::arch::asm!(
                         concat!("mv ", stringify!($reg), ", {}"),
-                        in(reg) x,
-                        options($($options),*)
+                        in(reg) x.0
+                        $(,options($($options),*))?
                     )
                 };
             }
@@ -234,7 +253,7 @@ macro_rules! mv_reg_ro {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO for $reg {
+        impl crate::insn::RegisterRO<usize> for $reg {
             #[inline]
             fn read(&self) -> usize {
                 let r: usize;
@@ -248,23 +267,43 @@ macro_rules! mv_reg_ro {
             }
         }
     };
-    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+    ($(#[$m:meta])* $reg:ident, $val:ident $(,$($options:ident),*)?) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        #[repr(transparent)]
+        #[derive(Debug, Clone, Copy)]
+        pub struct $val(usize);
+
+        impl From<$val> for usize {
+            #[inline]
+            fn from(v: $val) -> usize {
+                v.0
+            }
+        }
+
+        impl From<usize> for $val {
+            #[inline]
+            fn from(v: usize) -> $val {
+                $val(v)
+            }
+        }
+
         $(#[$m])*
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO for $reg {
+        impl crate::insn::RegisterRO<$val> for $reg {
             #[inline]
-            fn read(&self) -> usize {
+            fn read(&self) -> $val {
                 let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("mv {}, ", stringify!($reg)),
-                        out(reg) r,
-                        options($($options),*)
+                        out(reg) r
+                        $(,options($($options),*))?
                     )
                 };
-                r
+                $val(r)
             }
         }
     };
@@ -277,7 +316,7 @@ macro_rules! csr_reg_rw {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRW for $reg {
+        impl crate::insn::RegisterRW<usize> for $reg {
             #[inline]
             fn read(&self) -> usize {
                 let r: usize;
@@ -301,32 +340,52 @@ macro_rules! csr_reg_rw {
             }
         }
     };
-    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+    ($(#[$m:meta])* $reg:ident, $val:ident $(,$($options:ident),*)?) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        #[repr(transparent)]
+        #[derive(Debug, Clone, Copy)]
+        pub struct $val(usize);
+
+        impl From<$val> for usize {
+            #[inline]
+            fn from(v: $val) -> usize {
+                v.0
+            }
+        }
+
+        impl From<usize> for $val {
+            #[inline]
+            fn from(v: usize) -> $val {
+                $val(v)
+            }
+        }
+
         $(#[$m])*
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRW for $reg {
+        impl crate::insn::RegisterRW<$val> for $reg {
             #[inline]
-            fn read(&self) -> usize {
+            fn read(&self) -> $val {
                 let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),
-                        out(reg) r,
-                        options($($options),*)
+                        out(reg) r
+                        $(,options($($options),*))?
                     )
                 };
-                r
+                $val(r)
             }
 
             #[inline]
-            unsafe fn write(&self, x: usize) {
+            unsafe fn write(&self, x: $val) {
                 unsafe {
                     core::arch::asm!(
                         concat!("csrw ", stringify!($reg), ", {}"),
-                        in(reg) x,
-                        options($($options),*)
+                        in(reg) x.0
+                        $(,options($($options),*))?
                     )
                 };
             }
@@ -341,7 +400,7 @@ macro_rules! csr_reg_ro {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO for $reg {
+        impl crate::insn::RegisterRO<usize> for $reg {
             #[inline]
             fn read(&self) -> usize {
                 let r: usize;
@@ -355,23 +414,43 @@ macro_rules! csr_reg_ro {
             }
         }
     };
-    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
+    ($(#[$m:meta])* $reg:ident, $val:ident $(,$($options:ident),*)?) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        #[repr(transparent)]
+        #[derive(Debug, Clone, Copy)]
+        pub struct $val(usize);
+
+        impl From<$val> for usize {
+            #[inline]
+            fn from(v: $val) -> usize {
+                v.0
+            }
+        }
+
+        impl From<usize> for $val {
+            #[inline]
+            fn from(v: usize) -> $val {
+                $val(v)
+            }
+        }
+
         $(#[$m])*
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO for $reg {
+        impl crate::insn::RegisterRO<$val> for $reg {
             #[inline]
-            fn read(&self) -> usize {
+            fn read(&self) -> $val {
                 let r: usize;
                 unsafe {
                     core::arch::asm!(
                         concat!("csrr {}, ", stringify!($reg)),
-                        out(reg) r,
-                        options($($options),*)
+                        out(reg) r
+                        $(,options($($options),*))?
                     )
                 };
-                r
+                $val(r)
             }
         }
     };
@@ -379,18 +458,11 @@ macro_rules! csr_reg_ro {
 
 #[macro_export]
 macro_rules! naked_insn {
-    ($(#[$m:meta])* $reg:ident) => {
+    ($(#[$m:meta])* $reg:ident $(,$($options:ident),*)?) => {
         $(#[$m])*
         #[allow(non_camel_case_types)]
         pub fn $reg() {
-            unsafe { core::arch::asm!(stringify!($reg)) };
-        }
-    };
-    ($(#[$m:meta])* $reg:ident, $($options:ident),*) => {
-        $(#[$m])*
-        #[allow(non_camel_case_types)]
-        pub fn $reg() {
-            unsafe { core::arch::asm!(stringify!($reg), options($($options),*)) };
+            unsafe { core::arch::asm!(stringify!($reg) $(,options($($options),*))?) };
         }
     };
 }
