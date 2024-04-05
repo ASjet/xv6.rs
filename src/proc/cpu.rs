@@ -3,7 +3,7 @@ use crate::arch;
 /// Saved registers for kernel context switches.
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
-struct Context {
+pub struct Context {
     ra: u64,
     sp: u64,
 
@@ -23,7 +23,7 @@ struct Context {
 }
 
 impl Context {
-    const fn new() -> Context {
+    pub const fn new() -> Context {
         return Context {
             ra: 0,
             sp: 0,
