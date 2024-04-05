@@ -42,7 +42,7 @@ impl Mask {
     /// Set the value at the mask in the target.
     #[inline]
     pub const fn set(&self, target: usize, value: usize) -> usize {
-        (target & !self.mask) | (value << self.shift)
+        (target & !self.mask) | ((value << self.shift) & self.mask)
     }
 
     /// Set all bits at the mask in the target.
