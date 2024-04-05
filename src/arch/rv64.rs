@@ -8,7 +8,7 @@ pub mod vm;
 
 #[inline]
 pub fn is_intr_on() -> bool {
-    (s::sstatus.read() & s::SSTATUS_SIE.mask()) != 0
+    s::sstatus.read().sie()
 }
 
 #[inline]

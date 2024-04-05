@@ -17,21 +17,8 @@ naked_insn!(
 
 csr_reg_rw!(
     /// Supervisor status register
-    sstatus
+    sstatus, Sstatus
 );
-impl sstatus {
-    /// Read sstatus.SPP
-    #[inline]
-    pub fn r_spp(&self) -> PrivilegeLevel {
-        PrivilegeLevel::try_from(self.read_mask(SSTATUS_SPP) as u8).unwrap()
-    }
-
-    /// Write sstatus.SPP
-    #[inline]
-    pub unsafe fn w_spp(&self, l: PrivilegeLevel) {
-        unsafe { self.write_mask(SSTATUS_SPP, l as usize) }
-    }
-}
 pub const SSTATUS_SD: Mask = Mask::new(1, 63);
 pub const SSTATUS_UXL: Mask = Mask::new(2, 32);
 pub const SSTATUS_MXR: Mask = Mask::new(1, 19);
@@ -43,6 +30,19 @@ pub const SSTATUS_SPP: Mask = Mask::new(1, 8); // Previous mode, 1=Supervisor, 0
 pub const SSTATUS_UBE: Mask = Mask::new(1, 6);
 pub const SSTATUS_SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
 pub const SSTATUS_SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+impl Sstatus {
+    /// Read `sstatus.SPP`
+    #[inline]
+    pub fn spp(&self) -> PrivilegeLevel {
+        unsafe { PrivilegeLevel::try_from(SSTATUS_SPP.get(self.0) as u8).unwrap_unchecked() }
+    }
+
+    /// Read `sstatus.SIE`
+    #[inline]
+    pub fn sie(&self) -> bool {
+        SSTATUS_SIE.get_raw(self.0) == 1
+    }
+}
 
 csr_reg_rw!(
     /// Supervisor interrupt-enable register

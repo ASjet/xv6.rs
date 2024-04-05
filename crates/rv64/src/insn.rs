@@ -10,7 +10,7 @@ pub mod s;
 /// Unprivileged Level
 pub mod u;
 
-#[derive(Debug, IntEnum)]
+#[derive(Debug, IntEnum, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum PrivilegeLevel {
     U = 0b00,
@@ -61,6 +61,12 @@ impl Mask {
     #[inline]
     pub const fn get(&self, target: usize) -> usize {
         (target & self.mask) >> self.shift
+    }
+
+    /// Equal to `target & mask`
+    #[inline]
+    pub const fn get_raw(&self, target: usize) -> usize {
+        target & self.mask
     }
 
     /// Get the mask value
