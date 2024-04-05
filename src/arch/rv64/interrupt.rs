@@ -2,6 +2,8 @@
 
 use crate::arch::def;
 use crate::io::{BaseIO, ScratchIO};
+use crate::{arch, println};
+use rv64::insn::{s, RegisterRW};
 
 const PLIC_BASE: BaseIO<u32> = BaseIO::new(def::PLIC as usize);
 const PLIC_MENABLE: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x2000, 0x100);
@@ -36,4 +38,70 @@ pub fn plic_claim(hart: usize) -> u32 {
 /// tell the PLIC we've served this IRQ.
 pub fn plic_complete(hart: usize, irq: u32) {
     PLIC_SCLAIM.index(hart).write(irq);
+}
+
+pub type IRQ = u32;
+
+pub enum Source {
+    Unknown(s::Scause), // The source is not device
+    Timer,              // Timer interrupt
+    Device(IRQ),        // Device interrupt, the value is the IRQ number
+}
+
+/// Check if it's an external interrupt or software interrupt, and handle it.
+pub fn dev_intr() -> Source {
+    let scause = s::scause.read();
+    let hart = arch::cpuid();
+
+    if scause.is_interrupt() {
+        // Interrupt
+        use s::ScauseInterrupt;
+
+        let irq = plic_claim(hart);
+        match scause.interrupt() {
+            ScauseInterrupt::SupervisorSoftwareInterrupt => {
+                // Software interrupt from a machine-mode timer interrupt,
+                // forwarded by timervec in kernelvec.S.
+                if hart == 0 {
+                    // TODO: clockintr();
+                }
+
+                // Acknowledge the software interrupt by clearing
+                // the SSIP bit in sip.
+                unsafe { s::sip.clear_mask(s::SIP_SSIP) };
+
+                return Source::Timer;
+            }
+            ScauseInterrupt::SupervisorExternalInterrupt => {
+                // This is a supervisor external interrupt, via PLIC.
+                // irq indicates which device interrupted.
+
+                #[allow(unused_variables)]
+                match irq as usize {
+                    def::UART0_IRQ => {
+                        // TODO: uartintr();
+                    }
+                    def::VIRTIO0_IRQ => {
+                        // TODO: virtio_disk_intr();
+                    }
+                    irq => {
+                        println!("unexpected interrupt irq={}", irq);
+                    }
+                }
+                // The PLIC allows each device to raise at most one
+                // interrupt at a time; tell the PLIC the device is
+                // now allowed to interrupt again.
+                if irq != 0 {
+                    plic_complete(hart, irq);
+                }
+                return Source::Device(irq);
+            }
+            other => {
+                println!("unexpected interrupt scause={:x?}", other);
+            }
+        }
+    } else {
+        // Exception
+    }
+    return Source::Unknown(scause);
 }

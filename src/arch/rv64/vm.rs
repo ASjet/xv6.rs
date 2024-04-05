@@ -4,7 +4,7 @@ use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
 use rv64::{
     insn::s,
-    vm::{self, PageTable, PagingSchema, PhysAddr, Sv39, VirtAddr, PAGE_SIZE, PA_PPN},
+    vm::{self, PhysAddr, VirtAddr},
 };
 
 extern "C" {
@@ -24,7 +24,9 @@ extern "C" {
     static _trampoline: u8;
 }
 
-static mut KPGTBL: *mut PageTable<Sv39> = core::ptr::null_mut();
+pub type PageTable = rv64::vm::PageTable<rv64::vm::Sv39>;
+
+static mut KPGTBL: *mut PageTable = core::ptr::null_mut();
 
 pub fn heap_range() -> (PhysAddr, PhysAddr) {
     unsafe {
@@ -61,7 +63,7 @@ pub fn init_mapping() {
 
         let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
         page.memset(0x0usize, ALLOCATOR.page_size());
-        let kpt = page.as_mut::<PageTable<Sv39>>().unwrap();
+        let kpt = page.as_mut::<PageTable>().unwrap();
 
         // Erase the static attribute from ALLOCATOR
         let alloc = &*addr_of!(ALLOCATOR);
@@ -81,7 +83,7 @@ pub fn init_mapping() {
         map_pages_log(
             "UART0",
             def::UART0,
-            PAGE_SIZE,
+            def::PG_SIZE,
             def::UART0,
             perm_rw,
             "map UART0 failed",
@@ -91,7 +93,7 @@ pub fn init_mapping() {
         map_pages_log(
             "VIRTIO",
             def::VIRTIO0,
-            PAGE_SIZE,
+            def::PG_SIZE,
             def::VIRTIO0,
             perm_rw,
             "map VIRTIO0 failed",
@@ -131,14 +133,26 @@ pub fn init_mapping() {
         // the highest virtual address in the kernel.
         map_pages_log(
             "trampoline",
-            usize::from(Sv39::max_va()) - PAGE_SIZE,
-            PAGE_SIZE,
+            usize::from(PageTable::max_va()) - def::PG_SIZE,
+            def::PG_SIZE,
             trampoline,
             perm_rx,
             "map trampoline failed",
         );
 
-        // TODO: proc::map_stacks()
+        // Allocate a page for each process's kernel stack.
+        // Map it high in memory, followed by an invalid
+        // guard page.
+        proc::kstack_addrs().into_iter().for_each(|va| {
+            map_pages_log(
+                "kstack",
+                va,
+                def::PG_SIZE,
+                ALLOCATOR.kalloc().expect("kalloc stack failed").into(),
+                perm_rw,
+                "map stack failed",
+            );
+        });
 
         KPGTBL = kpt;
     }
@@ -160,6 +174,6 @@ pub fn enable_paging() {
         addr,
         super::cpuid()
     );
-    unsafe { s::satp.set(s::SatpMode::Sv39, 0, PA_PPN.get(addr)) }
+    unsafe { s::satp.set(s::SatpMode::Sv39, 0, addr) }
     s::sfence_vma();
 }

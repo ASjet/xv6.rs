@@ -402,6 +402,10 @@ pub struct PageTable<T: PagingSchema> {
 }
 
 impl<T: PagingSchema + 'static> PageTable<T> {
+    pub fn max_va() -> VirtAddr {
+        T::max_va()
+    }
+
     pub fn virt_to_phys(&self, va: VirtAddr) -> Result<PhysAddr, PageTableError> {
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
