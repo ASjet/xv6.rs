@@ -140,7 +140,19 @@ pub fn init_mapping() {
             "map trampoline failed",
         );
 
-        // TODO: proc::map_stacks()
+        // Allocate a page for each process's kernel stack.
+        // Map it high in memory, followed by an invalid
+        // guard page.
+        proc::kstack_addrs().into_iter().for_each(|va| {
+            map_pages_log(
+                "kstack",
+                va,
+                def::PG_SIZE,
+                ALLOCATOR.kalloc().expect("kalloc stack failed").into(),
+                perm_rw,
+                "map stack failed",
+            );
+        });
 
         KPGTBL = kpt;
     }
