@@ -1,4 +1,4 @@
-use super::cpu;
+use super::switch;
 use crate::{
     arch::{self, def},
     spinlock::Mutex,
@@ -60,7 +60,7 @@ pub struct Proc {
     /// Data for trampoline
     trapframe: *mut arch::trampoline::TrapFrame,
     /// swtch() here to run process
-    context: cpu::Context,
+    context: switch::Context,
     // TODO: array[NOFILE] of opened file descriptors
     // TODO: *inode for cwd
 }
@@ -84,7 +84,7 @@ impl Proc {
             size: 0,
             pagetable: core::ptr::null_mut(),
             trapframe: core::ptr::null_mut(),
-            context: cpu::Context::new(),
+            context: switch::Context::new(),
         }
     }
 }
