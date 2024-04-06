@@ -119,7 +119,7 @@ impl Proc {
         assert_ne!(self.sync.get().state, State::Running, "sched proc running");
         assert!(!arch::is_intr_on(), "sched interruptible");
 
-        let c = CPU::this_mut();
+        let c = CPU::this();
         let int_enable = c.get_interrupt_enabled();
         c.switch_back(&self.context);
         CPU::this_mut().set_interrupt_enabled(int_enable);

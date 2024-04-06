@@ -63,13 +63,13 @@ impl CPU {
 
     /// Switch to another context, return to `switch_back`
     #[inline]
-    pub unsafe fn switch_to(&mut self, p: &Context) {
+    pub unsafe fn switch_to(&self, p: &Context) {
         self.context.switch(p);
     }
 
     /// Switch back to origin context, return to `switch_to`
     #[inline]
-    pub unsafe fn switch_back(&mut self, p: &Context) {
+    pub unsafe fn switch_back(&self, p: &Context) {
         p.switch(&self.context);
     }
 
