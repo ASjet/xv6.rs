@@ -1,5 +1,8 @@
 use super::cpu;
-use crate::{arch, spinlock::Mutex};
+use crate::{
+    arch::{self, def},
+    spinlock::Mutex,
+};
 use core::mem::size_of;
 
 pub type Pid = i32;
@@ -29,11 +32,11 @@ static mut _PROC_MEM: [u8; size_of::<[Proc; crate::NPROC]>()] =
     [0; size_of::<[Proc; crate::NPROC]>()];
 pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
 
-pub fn init_procs() {
+pub fn init() {
     unsafe {
         PROCS = _PROC_MEM.as_mut_ptr() as *mut [Proc; crate::NPROC];
-        (*PROCS).iter_mut().for_each(|proc| {
-            *proc = Proc::new();
+        (*PROCS).iter_mut().enumerate().for_each(|(i, proc)| {
+            *proc = Proc::new(def::kstack(i));
         });
     }
 }
@@ -63,7 +66,7 @@ pub struct Proc {
 }
 
 impl Proc {
-    pub const fn new() -> Proc {
+    pub const fn new(kstack: usize) -> Proc {
         Proc {
             sync: Mutex::new(
                 _ProcSync {
@@ -77,7 +80,7 @@ impl Proc {
             ),
             parent: core::ptr::null_mut(),
             name: [0; 16],
-            kstack: 0,
+            kstack,
             size: 0,
             pagetable: core::ptr::null_mut(),
             trapframe: core::ptr::null_mut(),
