@@ -54,7 +54,6 @@ impl CPU {
     #[inline]
     pub unsafe fn pop_off(&mut self) {
         assert!(!arch::is_intr_on(), "pop_off - interruptible");
-        // FIXME: panic here
         assert!(self.noff >= 1, "pop_off");
         self.noff -= 1;
         if self.noff == 0 && self.interrupt_enabled {
