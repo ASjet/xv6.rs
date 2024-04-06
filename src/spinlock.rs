@@ -53,10 +53,16 @@ impl<T> Mutex<T> {
         }
     }
 
-    unsafe fn holding(&self) -> bool {
+    pub unsafe fn holding(&self) -> bool {
         (self.locked.load(Ordering::Relaxed) as *const CPU) == CPU::this()
     }
 
+    /// Only call with holding the lock
+    pub unsafe fn get(&self) -> &T {
+        &*self.data.get()
+    }
+
+    /// Only call with holding the lock
     pub unsafe fn get_mut(&self) -> &mut T {
         &mut *self.data.get()
     }
