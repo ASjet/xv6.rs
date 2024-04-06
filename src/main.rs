@@ -71,6 +71,7 @@ use xv6::mem;
 use xv6::panic_println;
 use xv6::println;
 use xv6::proc;
+use xv6::proc::scheduler;
 
 #[export_name = "_mp_hook"]
 pub extern "Rust" fn mp_hook(hartid: usize) -> bool {
@@ -155,5 +156,5 @@ extern "C" fn main() -> ! {
     }
 
     println!("hello from hart {}!", cpu_id);
-    arch::halt();
+    scheduler();
 }

@@ -1,13 +1,18 @@
-use super::switch::Context;
+use super::{switch::Context, Proc};
 use crate::arch;
 
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
+
+extern "C" {
+    fn switch(save: *mut Context, load: *const Context);
+}
 
 /// Per-CPU state
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct CPU {
-    _context: Context,
+    proc: Option<*mut Proc>,
+    context: Context,
     noff: i32,
     interrupt_enabled: bool,
 }
@@ -15,7 +20,8 @@ pub struct CPU {
 impl CPU {
     pub const fn new() -> CPU {
         CPU {
-            _context: Context::new(),
+            proc: None,
+            context: Context::new(),
             noff: 0,
             interrupt_enabled: false,
         }
@@ -47,6 +53,19 @@ impl CPU {
         if self.noff == 0 && self.interrupt_enabled {
             arch::intr_on();
         }
+    }
+
+    /// Switch to another context, use `switch_back` to return.
+    pub unsafe fn switch_to(&mut self, p: &Context) {
+        switch(&mut self.context, p);
+    }
+
+    pub unsafe fn switch_back(&self, p: &mut Context) {
+        switch(p, &self.context);
+    }
+
+    pub fn set_proc(&mut self, p: Option<*mut Proc>) {
+        self.proc = p;
     }
 }
 

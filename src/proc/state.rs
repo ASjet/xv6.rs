@@ -1,4 +1,4 @@
-use super::switch;
+use super::{cpu, switch};
 use crate::{
     arch::{self, def},
     spinlock::Mutex,
@@ -9,7 +9,7 @@ pub type Pid = i32;
 pub static NEXT_PID: Mutex<Pid> = Mutex::new(1, "next_pid");
 pub static GLOBAL_LOCK: Mutex<()> = Mutex::new((), "global_proc_lock");
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
     Unused,
     Used,
@@ -31,6 +31,10 @@ struct _ProcSync {
 static mut _PROC_MEM: [u8; size_of::<[Proc; crate::NPROC]>()] =
     [0; size_of::<[Proc; crate::NPROC]>()];
 pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
+
+pub fn kstack_addrs() -> [usize; crate::NPROC] {
+    core::array::from_fn(arch::def::kstack)
+}
 
 pub fn init() {
     unsafe {
@@ -87,8 +91,53 @@ impl Proc {
             context: switch::Context::new(),
         }
     }
+
+    pub fn state(&self) -> State {
+        self.sync.lock().state
+    }
+
+    pub fn cas_state(&self, old: State, new: State) -> bool {
+        let mut sync = self.sync.lock();
+        if sync.state == old {
+            sync.state = new;
+            true
+        } else {
+            false
+        }
+    }
 }
 
-pub fn kstack_addrs() -> [usize; crate::NPROC] {
-    core::array::from_fn(arch::def::kstack)
+/// Per-CPU process scheduler.
+/// Each CPU calls scheduler() after setting itself up.
+/// Scheduler never returns.  It loops, doing:
+///  - choose a process to run.
+///  - swtch to start running that process.
+///  - eventually that process transfers control
+///    via swtch back to the scheduler.
+pub fn scheduler() -> ! {
+    let c = unsafe { cpu::CPU::this_mut() };
+    loop {
+        // Avoid deadlock by ensuring that devices can interrupt.
+        arch::intr_on();
+
+        unsafe { PROCS.as_mut().unwrap_unchecked() }
+            .iter_mut()
+            .filter(|p| p.cas_state(State::Runnable, State::Running))
+            .for_each(|run| {
+            // Switch to chosen process
+            c.set_proc(Some(run));
+
+            // It is the process's job to release its lock and then
+            // reacquire it before jumping back to us.
+            let _guard = run.sync.lock();
+                unsafe { c.switch_to(&run.context) };
+
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c.set_proc(None);
+            });
+
+        // No process to run, wait for an interrupt.
+        core::hint::spin_loop();
+    }
 }
