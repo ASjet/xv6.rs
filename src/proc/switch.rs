@@ -43,7 +43,7 @@ switch:
 "
 );
 
-/// Saved registers for kernel context switches.
+/// Saved registers for kernel context switches. Internal mutable.
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Context {
@@ -83,5 +83,16 @@ impl Context {
             s10: 0,
             s11: 0,
         };
+    }
+}
+
+impl Context {
+    /// Switch to `new` context and save current context to self
+    /// Mark `switch` as immutable to make the borrow checker happy
+    pub unsafe fn switch(&self, new: *const Context) {
+        extern "C" {
+            fn switch(save: *const Context, load: *const Context);
+        }
+        switch(self, new);
     }
 }

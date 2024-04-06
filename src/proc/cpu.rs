@@ -3,10 +3,6 @@ use crate::arch;
 
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
 
-extern "C" {
-    fn switch(save: *mut Context, load: *const Context);
-}
-
 /// Per-CPU state
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -27,14 +23,24 @@ impl CPU {
         }
     }
 
+    #[inline]
     pub unsafe fn this_mut() -> &'static mut CPU {
         &mut CPUS[arch::cpuid()]
     }
 
+    #[inline]
     pub unsafe fn this() -> &'static CPU {
         &CPUS[arch::cpuid()]
     }
 
+    #[inline]
+    /// Currently running process on this CPU
+    pub unsafe fn proc(&mut self) -> Option<*mut Proc> {
+        let _guard = self.push_off();
+        self.proc
+    }
+
+    #[inline]
     pub unsafe fn push_off(&mut self) -> InterruptLock {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
@@ -45,6 +51,7 @@ impl CPU {
         InterruptLock
     }
 
+    #[inline]
     pub unsafe fn pop_off(&mut self) {
         assert!(!arch::is_intr_on(), "pop_off - interruptible");
         // FIXME: panic here
@@ -55,17 +62,36 @@ impl CPU {
         }
     }
 
-    /// Switch to another context, use `switch_back` to return.
+    /// Switch to another context, return to `switch_back`
+    #[inline]
     pub unsafe fn switch_to(&mut self, p: &Context) {
-        switch(&mut self.context, p);
+        self.context.switch(p);
     }
 
-    pub unsafe fn switch_back(&self, p: &mut Context) {
-        switch(p, &self.context);
+    /// Switch back to origin context, return to `switch_to`
+    #[inline]
+    pub unsafe fn switch_back(&mut self, p: &Context) {
+        p.switch(&self.context);
     }
 
+    #[inline]
     pub fn set_proc(&mut self, p: Option<*mut Proc>) {
         self.proc = p;
+    }
+
+    #[inline]
+    pub fn get_noff(&self) -> i32 {
+        self.noff
+    }
+
+    #[inline]
+    pub fn get_interrupt_enabled(&self) -> bool {
+        self.interrupt_enabled
+    }
+
+    #[inline]
+    pub fn set_interrupt_enabled(&mut self, enabled: bool) {
+        self.interrupt_enabled = enabled;
     }
 }
 

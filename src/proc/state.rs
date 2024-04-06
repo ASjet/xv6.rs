@@ -1,4 +1,4 @@
-use super::{cpu, switch};
+use super::{cpu, switch, CPU};
 use crate::{
     arch::{self, def},
     spinlock::Mutex,
@@ -105,6 +105,32 @@ impl Proc {
             false
         }
     }
+
+    /// Switch to scheduler.  Must hold only p->lock
+    /// and have changed proc->state. Saves and restores
+    /// intena because intena is a property of this
+    /// kernel thread, not this CPU. It should
+    /// be proc->intena and proc->noff, but that would
+    /// break in the few places where a lock is held but
+    /// there's no process.
+    pub unsafe fn sched(&self) {
+        assert!(self.sync.holding(), "sched proc not locked");
+        assert!(CPU::this().get_noff() == 1, "sched cpu locks");
+        assert_ne!(self.sync.get().state, State::Running, "sched proc running");
+        assert!(!arch::is_intr_on(), "sched interruptible");
+
+        let c = CPU::this_mut();
+        let int_enable = c.get_interrupt_enabled();
+        c.switch_back(&self.context);
+        CPU::this_mut().set_interrupt_enabled(int_enable);
+    }
+
+    /// Give up the CPU for one scheduling round.
+    pub fn r#yield(&mut self) {
+        let mut sync = self.sync.lock();
+        sync.state = State::Runnable;
+        unsafe { self.sched() };
+    }
 }
 
 /// Per-CPU process scheduler.
@@ -124,17 +150,17 @@ pub fn scheduler() -> ! {
             .iter_mut()
             .filter(|p| p.cas_state(State::Runnable, State::Running))
             .for_each(|run| {
-            // Switch to chosen process
-            c.set_proc(Some(run));
+                // Switch to chosen process
+                c.set_proc(Some(run));
 
-            // It is the process's job to release its lock and then
-            // reacquire it before jumping back to us.
-            let _guard = run.sync.lock();
+                // It is the process's job to release its lock and then
+                // reacquire it before jumping back to us.
+                let _guard = run.sync.lock();
                 unsafe { c.switch_to(&run.context) };
 
-            // Process is done running for now.
-            // It should have changed its p->state before coming back.
-            c.set_proc(None);
+                // Process is done running for now.
+                // It should have changed its p->state before coming back.
+                c.set_proc(None);
             });
 
         // No process to run, wait for an interrupt.
