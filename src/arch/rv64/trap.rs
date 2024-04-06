@@ -1,5 +1,6 @@
 use super::{def, interrupt};
 use crate::arch;
+use crate::proc::{State, CPU};
 use core::{arch::global_asm, panic};
 use rv64::insn::{self, m, s, RegisterRO, RegisterRW};
 
@@ -187,8 +188,14 @@ extern "C" fn kernel_trap() {
         Source::Timer => {
             // give up the CPU if this is a timer interrupt.
             if arch::cpuid() != 0 {
-                // TODO: make sure cpu state is RUNNING
-                // TODO: yield();
+                unsafe {
+                    if let Some(run) = CPU::this_mut().proc() {
+                        let run = run.as_mut().unwrap_unchecked();
+                        if run.state() == State::Running {
+                            run.r#yield();
+                        }
+                    }
+                }
             }
         }
         Source::Device(_) => {

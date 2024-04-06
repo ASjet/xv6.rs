@@ -1,47 +1,5 @@
+use super::{switch::Context, Proc};
 use crate::arch;
-
-/// Saved registers for kernel context switches.
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct Context {
-    ra: u64,
-    sp: u64,
-
-    // callee-saved
-    s0: u64,
-    s1: u64,
-    s2: u64,
-    s3: u64,
-    s4: u64,
-    s5: u64,
-    s6: u64,
-    s7: u64,
-    s8: u64,
-    s9: u64,
-    s10: u64,
-    s11: u64,
-}
-
-impl Context {
-    pub const fn new() -> Context {
-        return Context {
-            ra: 0,
-            sp: 0,
-            s0: 0,
-            s1: 0,
-            s2: 0,
-            s3: 0,
-            s4: 0,
-            s5: 0,
-            s6: 0,
-            s7: 0,
-            s8: 0,
-            s9: 0,
-            s10: 0,
-            s11: 0,
-        };
-    }
-}
 
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
 
@@ -49,7 +7,8 @@ pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct CPU {
-    _context: Context,
+    proc: Option<*mut Proc>,
+    context: Context,
     noff: i32,
     interrupt_enabled: bool,
 }
@@ -57,20 +16,31 @@ pub struct CPU {
 impl CPU {
     pub const fn new() -> CPU {
         CPU {
-            _context: Context::new(),
+            proc: None,
+            context: Context::new(),
             noff: 0,
             interrupt_enabled: false,
         }
     }
 
+    #[inline]
     pub unsafe fn this_mut() -> &'static mut CPU {
         &mut CPUS[arch::cpuid()]
     }
 
+    #[inline]
     pub unsafe fn this() -> &'static CPU {
         &CPUS[arch::cpuid()]
     }
 
+    #[inline]
+    /// Currently running process on this CPU
+    pub unsafe fn proc(&mut self) -> Option<*mut Proc> {
+        let _guard = self.push_off();
+        self.proc
+    }
+
+    #[inline]
     pub unsafe fn push_off(&mut self) -> InterruptLock {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
@@ -81,14 +51,46 @@ impl CPU {
         InterruptLock
     }
 
+    #[inline]
     pub unsafe fn pop_off(&mut self) {
         assert!(!arch::is_intr_on(), "pop_off - interruptible");
-        // FIXME: panic here
         assert!(self.noff >= 1, "pop_off");
         self.noff -= 1;
         if self.noff == 0 && self.interrupt_enabled {
             arch::intr_on();
         }
+    }
+
+    /// Switch to another context, return to `switch_back`
+    #[inline]
+    pub unsafe fn switch_to(&self, p: &Context) {
+        self.context.switch(p);
+    }
+
+    /// Switch back to origin context, return to `switch_to`
+    #[inline]
+    pub unsafe fn switch_back(&self, p: &Context) {
+        p.switch(&self.context);
+    }
+
+    #[inline]
+    pub fn set_proc(&mut self, p: Option<*mut Proc>) {
+        self.proc = p;
+    }
+
+    #[inline]
+    pub fn get_noff(&self) -> i32 {
+        self.noff
+    }
+
+    #[inline]
+    pub fn get_interrupt_enabled(&self) -> bool {
+        self.interrupt_enabled
+    }
+
+    #[inline]
+    pub fn set_interrupt_enabled(&mut self, enabled: bool) {
+        self.interrupt_enabled = enabled;
     }
 }
 
