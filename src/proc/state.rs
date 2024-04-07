@@ -3,7 +3,7 @@ use crate::{
     arch::{self, def},
     spinlock::Mutex,
 };
-use core::mem::size_of;
+use core::{mem::size_of, ptr::addr_of_mut};
 
 pub type Pid = i32;
 pub static NEXT_PID: Mutex<Pid> = Mutex::new(1, "next_pid");
@@ -28,8 +28,8 @@ struct _ProcSync {
     pid: Pid,
 }
 
-static mut _PROC_MEM: [u8; size_of::<[Proc; crate::NPROC]>()] =
-    [0; size_of::<[Proc; crate::NPROC]>()];
+static mut _PROC_MEM: [usize; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()] =
+    [0; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()];
 pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
 
 pub fn kstack_addrs() -> [usize; crate::NPROC] {
@@ -38,7 +38,7 @@ pub fn kstack_addrs() -> [usize; crate::NPROC] {
 
 pub fn init() {
     unsafe {
-        PROCS = _PROC_MEM.as_mut_ptr() as *mut [Proc; crate::NPROC];
+        PROCS = addr_of_mut!(_PROC_MEM) as *mut [Proc; crate::NPROC];
         (*PROCS).iter_mut().enumerate().for_each(|(i, proc)| {
             *proc = Proc::new(def::kstack(i));
         });
