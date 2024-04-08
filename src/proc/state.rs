@@ -121,8 +121,11 @@ impl Proc {
 
         let c = CPU::this();
         let int_enable = c.get_interrupt_enabled();
-        c.switch_back(&self.context);
-        CPU::this_mut().set_interrupt_enabled(int_enable);
+
+        unsafe {
+            c.switch_back(&self.context);
+            CPU::this_mut().set_interrupt_enabled(int_enable);
+        }
     }
 
     /// Give up the CPU for one scheduling round.
