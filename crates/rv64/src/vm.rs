@@ -305,6 +305,18 @@ impl From<usize> for PhysAddr {
     }
 }
 
+impl<T> From<*const T> for PhysAddr {
+    fn from(addr: *const T) -> Self {
+        PhysAddr(addr as usize)
+    }
+}
+
+impl<T> From<*mut T> for PhysAddr {
+    fn from(addr: *mut T) -> Self {
+        PhysAddr(addr as usize)
+    }
+}
+
 impl From<PhysAddr> for usize {
     fn from(addr: PhysAddr) -> usize {
         addr.0
