@@ -65,7 +65,7 @@ struct Writer;
 
 impl Writer {
     fn write_byte(&self, c: u8) {
-        let _guard = unsafe { CPU::this_mut().push_off() };
+        let _guard = unsafe { CPU::push_off() };
         while (LSR.read() & LSR_TX_IDLE) == 0 {}
         THR.write(c);
     }

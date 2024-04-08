@@ -114,12 +114,12 @@ impl Proc {
     /// break in the few places where a lock is held but
     /// there's no process.
     pub unsafe fn sched(&self) {
+        let c = CPU::this();
         assert!(self.sync.holding(), "sched proc not locked");
-        assert!(CPU::this().get_noff() == 1, "sched cpu locks");
+        assert!(c.get_noff() == 1, "sched cpu locks");
         assert_ne!(self.sync.get().state, State::Running, "sched proc running");
         assert!(!arch::is_intr_on(), "sched interruptible");
 
-        let c = CPU::this();
         let int_enable = c.get_interrupt_enabled();
 
         unsafe {

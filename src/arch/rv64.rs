@@ -28,6 +28,9 @@ pub fn halt() -> ! {
     }
 }
 
+/// Must be called with interrupts disabled,
+/// to prevent race with process being moved
+/// to a different CPU.
 #[inline]
 pub fn cpuid() -> usize {
     u::tp.read()
