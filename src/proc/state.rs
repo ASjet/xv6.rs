@@ -5,9 +5,18 @@ use crate::{
 };
 use core::{mem::size_of, ptr::addr_of_mut};
 
-pub type Pid = i32;
-pub static NEXT_PID: Mutex<Pid> = Mutex::new(1, "next_pid");
 pub static GLOBAL_LOCK: Mutex<()> = Mutex::new((), "global_proc_lock");
+
+pub type Pid = i32;
+static NEXT_PID: Mutex<Pid> = Mutex::new(1, "next_pid");
+
+/// Allocate a globally unique PID
+pub fn alloc_pid() -> Pid {
+    let mut next_pid = NEXT_PID.lock();
+    let pid = *next_pid;
+    *next_pid += 1;
+    pid
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
