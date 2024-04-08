@@ -55,7 +55,7 @@ struct _ProcSync {
     chan: *mut (),
     killed: bool,
     xstate: i32,
-    pid: Pid,
+    pid: Option<Pid>,
 }
 
 #[derive(Debug)]
@@ -91,7 +91,7 @@ impl Proc {
                     chan: core::ptr::null_mut(),
                     killed: false,
                     xstate: 0,
-                    pid: 0,
+                    pid: None,
                 },
                 "proc_sync",
             ),
@@ -160,7 +160,7 @@ impl Proc {
                 .next()
         }?;
 
-        p.sync.lock().pid = alloc_pid();
+        p.sync.lock().pid = Some(alloc_pid());
 
         p.trapframe = unsafe {
             ALLOCATOR.kalloc().or_else(|| {
@@ -183,8 +183,32 @@ impl Proc {
         Some(p)
     }
 
+    /// free a proc structure and the data hanging from it,
+    /// including user pages.
+    /// p->lock must be held.(FIXME: Is holding lock necessary?)
     pub fn free(&mut self) {
-        todo!()
+        if !self.trapframe.is_null() {
+            unsafe {
+                ALLOCATOR.kfree(self.trapframe);
+            }
+            self.trapframe = core::ptr::null_mut();
+        }
+        if !self.pagetable.is_null() {
+            unsafe {
+                ALLOCATOR.kfree(self.pagetable);
+            }
+            self.pagetable = core::ptr::null_mut();
+        }
+        self.size = 0;
+        self.parent = core::ptr::null_mut();
+        self.name = [0; 16];
+
+        let mut sync = self.sync.lock();
+        sync.state = State::Unused;
+        sync.pid = None;
+        sync.chan = core::ptr::null_mut();
+        sync.killed = false;
+        sync.xstate = 0;
     }
 }
 
