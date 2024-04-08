@@ -1,6 +1,10 @@
 use super::{cpu, switch, CPU};
 use crate::{
-    arch::{self, def},
+    arch::{
+        self,
+        def::{self, PG_SIZE},
+    },
+    mem::alloc::ALLOCATOR,
     spinlock::Mutex,
 };
 use core::{mem::size_of, ptr::addr_of_mut};
@@ -143,6 +147,45 @@ impl Proc {
         sync.state = State::Runnable;
         unsafe { self.sched() };
     }
+
+    /// Look in the process table for an UNUSED proc.
+    /// If found, initialize state required to run in the kernel,
+    /// and return with p->lock held.(FIXME: Is holding lock necessary?)
+    /// If there are no free procs, or a memory allocation fails, return 0.
+    pub fn alloc() -> Option<*mut Proc> {
+        let p = unsafe {
+            (*PROCS)
+                .iter_mut()
+                .filter(|p| p.cas_state(State::Unused, State::Used))
+                .next()
+        }?;
+
+        p.sync.lock().pid = alloc_pid();
+
+        p.trapframe = unsafe {
+            ALLOCATOR.kalloc().or_else(|| {
+                p.free();
+                None
+            })
+        }?
+        .as_mut_ptr::<arch::trampoline::TrapFrame>();
+
+        p.pagetable = unsafe {
+            ALLOCATOR.kalloc().or_else(|| {
+                p.free();
+                None
+            })
+        }?
+        .as_mut_ptr::<arch::vm::PageTable>();
+
+        p.context.setup(fork_ret as usize, p.kstack + PG_SIZE);
+
+        Some(p)
+    }
+
+    pub fn free(&mut self) {
+        todo!()
+    }
 }
 
 /// Per-CPU process scheduler.
@@ -158,11 +201,11 @@ pub fn scheduler() -> ! {
         // Avoid deadlock by ensuring that devices can interrupt.
         arch::intr_on();
 
-        unsafe { PROCS.as_mut().unwrap_unchecked() }
-            .iter_mut()
-            .filter(|p| p.cas_state(State::Runnable, State::Running))
-            .for_each(|run| {
-                unsafe {
+        unsafe {
+            (*PROCS)
+                .iter_mut()
+                .filter(|p| p.cas_state(State::Runnable, State::Running))
+                .for_each(|run| {
                     // Switch to chosen process
                     (*c).set_proc(Some(run));
 
@@ -174,10 +217,14 @@ pub fn scheduler() -> ! {
                     // Process is done running for now.
                     // It should have changed its p->state before coming back.
                     (*c).set_proc(None);
-                }
-            });
+                });
+        }
 
         // No process to run, wait for an interrupt.
         core::hint::spin_loop();
     }
+}
+
+fn fork_ret() {
+    todo!()
 }
