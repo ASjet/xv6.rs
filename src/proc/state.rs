@@ -116,15 +116,15 @@ impl Proc {
     pub unsafe fn sched(&self) {
         let c = CPU::this();
         assert!(self.sync.holding(), "sched proc not locked");
-        assert!(c.get_noff() == 1, "sched cpu locks");
+        assert!((*c).get_noff() == 1, "sched cpu locks");
         assert_ne!(self.sync.get().state, State::Running, "sched proc running");
         assert!(!arch::is_intr_on(), "sched interruptible");
 
-        let int_enable = c.get_interrupt_enabled();
+        let int_enable = (*c).get_interrupt_enabled();
 
         unsafe {
-            c.switch_back(&self.context);
-            CPU::this_mut().set_interrupt_enabled(int_enable);
+            (*c).switch_back(&self.context);
+            (*CPU::this_mut()).set_interrupt_enabled(int_enable);
         }
     }
 
@@ -153,17 +153,19 @@ pub fn scheduler() -> ! {
             .iter_mut()
             .filter(|p| p.cas_state(State::Runnable, State::Running))
             .for_each(|run| {
-                // Switch to chosen process
-                c.set_proc(Some(run));
+                unsafe {
+                    // Switch to chosen process
+                    (*c).set_proc(Some(run));
 
-                // It is the process's job to release its lock and then
-                // reacquire it before jumping back to us.
-                let _guard = run.sync.lock();
-                unsafe { c.switch_to(&run.context) };
+                    // It is the process's job to release its lock and then
+                    // reacquire it before jumping back to us.
+                    let _guard = run.sync.lock();
+                    (*c).switch_to(&run.context);
 
-                // Process is done running for now.
-                // It should have changed its p->state before coming back.
-                c.set_proc(None);
+                    // Process is done running for now.
+                    // It should have changed its p->state before coming back.
+                    (*c).set_proc(None);
+                }
             });
 
         // No process to run, wait for an interrupt.

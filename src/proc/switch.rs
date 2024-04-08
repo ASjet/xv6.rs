@@ -85,14 +85,3 @@ impl Context {
         };
     }
 }
-
-impl Context {
-    /// Switch to `new` context and save current context to self
-    /// Mark `switch` as immutable to make the borrow checker happy
-    pub unsafe fn switch(&self, new: *const Context) {
-        extern "C" {
-            fn switch(save: *const Context, load: *const Context);
-        }
-        switch(self, new);
-    }
-}
