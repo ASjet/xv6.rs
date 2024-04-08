@@ -18,6 +18,23 @@ pub fn alloc_pid() -> Pid {
     pid
 }
 
+static mut _PROC_MEM: [usize; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()] =
+    [0; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()];
+pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
+
+pub fn kstack_addrs() -> [usize; crate::NPROC] {
+    core::array::from_fn(arch::def::kstack)
+}
+
+pub fn init() {
+    unsafe {
+        PROCS = addr_of_mut!(_PROC_MEM) as *mut [Proc; crate::NPROC];
+        (*PROCS).iter_mut().enumerate().for_each(|(i, proc)| {
+            *proc = Proc::new(def::kstack(i));
+        });
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum State {
     Unused,
@@ -35,23 +52,6 @@ struct _ProcSync {
     killed: bool,
     xstate: i32,
     pid: Pid,
-}
-
-static mut _PROC_MEM: [usize; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()] =
-    [0; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()];
-pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
-
-pub fn kstack_addrs() -> [usize; crate::NPROC] {
-    core::array::from_fn(arch::def::kstack)
-}
-
-pub fn init() {
-    unsafe {
-        PROCS = addr_of_mut!(_PROC_MEM) as *mut [Proc; crate::NPROC];
-        (*PROCS).iter_mut().enumerate().for_each(|(i, proc)| {
-            *proc = Proc::new(def::kstack(i));
-        });
-    }
 }
 
 #[derive(Debug)]
@@ -79,7 +79,7 @@ pub struct Proc {
 }
 
 impl Proc {
-    pub const fn new(kstack: usize) -> Proc {
+    const fn new(kstack: usize) -> Proc {
         Proc {
             sync: Mutex::new(
                 _ProcSync {
