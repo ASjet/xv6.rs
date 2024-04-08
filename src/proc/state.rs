@@ -49,6 +49,9 @@ pub enum State {
     Zombie,
 }
 
+// TODO: Implement ProcError
+pub type ForkError = ();
+
 #[derive(Debug)]
 struct _ProcSync {
     state: State,
@@ -170,13 +173,10 @@ impl Proc {
         }?
         .as_mut_ptr::<arch::trampoline::TrapFrame>();
 
-        p.pagetable = unsafe {
-            ALLOCATOR.kalloc().or_else(|| {
-                p.free();
-                None
-            })
-        }?
-        .as_mut_ptr::<arch::vm::PageTable>();
+        p.pagetable = p.alloc_pagetable().or_else(|| {
+            p.free();
+            None
+        })?;
 
         p.context.setup(fork_ret as usize, p.kstack + PG_SIZE);
 
@@ -194,9 +194,7 @@ impl Proc {
             self.trapframe = core::ptr::null_mut();
         }
         if !self.pagetable.is_null() {
-            unsafe {
-                ALLOCATOR.kfree(self.pagetable);
-            }
+            self.free_pagetable();
             self.pagetable = core::ptr::null_mut();
         }
         self.size = 0;
@@ -209,6 +207,55 @@ impl Proc {
         sync.chan = core::ptr::null_mut();
         sync.killed = false;
         sync.xstate = 0;
+    }
+
+    /// Create a user page table for a given process,
+    /// with no user memory, but with trampoline pages.
+    fn alloc_pagetable(&self) -> Option<*mut arch::vm::PageTable> {
+        todo!()
+    }
+
+    /// Free a process's page table, and free the
+    /// physical memory it refers to.
+    fn free_pagetable(&self) {
+        todo!()
+    }
+
+    /// Grow or shrink user memory by n bytes.
+    /// Return `true` on success, `false` on failure.
+    pub fn grow(&mut self, _sz: usize) -> bool {
+        todo!()
+    }
+
+    /// Create a new process, copying the parent.
+    /// Sets up child kernel stack to return as if from fork() system call.
+    pub fn fork(&self) -> Result<Pid, ForkError> {
+        todo!()
+    }
+
+    /// Pass p's abandoned children to init.
+    /// Caller must hold wait_lock.
+    pub fn reparent(&mut self) {
+        todo!()
+    }
+
+    /// Exit the current process.  Does not return.
+    /// An exited process remains in the zombie state
+    /// until its parent calls wait().
+    pub fn exit(&mut self) {
+        todo!()
+    }
+
+    /// Wait for a child process to exit and return its pid.
+    /// Return `None` if this process has no children.
+    pub fn wait(&mut self, _addr: usize) -> Option<Pid> {
+        todo!()
+    }
+
+    // Atomically release lock and sleep on chan.
+    // Reacquires lock when awakened.
+    pub fn sleep(&self) {
+        todo!()
     }
 }
 
@@ -250,5 +297,13 @@ pub fn scheduler() -> ! {
 }
 
 fn fork_ret() {
+    todo!()
+}
+
+fn wake_up() {
+    todo!()
+}
+
+fn kill(_pid: Pid) {
     todo!()
 }
