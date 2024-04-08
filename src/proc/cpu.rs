@@ -1,6 +1,10 @@
 use super::{switch::Context, Proc};
 use crate::arch;
 
+extern "C" {
+    fn switch(save: *const Context, load: *const Context);
+}
+
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
 
 /// Per-CPU state
@@ -23,31 +27,36 @@ impl CPU {
         }
     }
 
+    /// Return this CPU's cpu struct.
+    /// Interrupts must be disabled.
     #[inline]
-    pub unsafe fn this_mut() -> &'static mut CPU {
+    pub unsafe fn this_mut() -> *mut CPU {
         &mut CPUS[arch::cpuid()]
     }
 
+    /// Return this CPU's cpu struct.
+    /// Interrupts must be disabled.
     #[inline]
-    pub unsafe fn this() -> &'static CPU {
+    pub unsafe fn this() -> *const CPU {
         &CPUS[arch::cpuid()]
     }
 
     #[inline]
     /// Currently running process on this CPU
-    pub unsafe fn proc(&mut self) -> Option<*mut Proc> {
-        let _guard = self.push_off();
-        self.proc
+    pub unsafe fn this_proc() -> Option<*mut Proc> {
+        let _guard = CPU::push_off();
+        (*CPU::this_mut()).proc
     }
 
     #[inline]
-    pub unsafe fn push_off(&mut self) -> InterruptLock {
+    pub unsafe fn push_off() -> InterruptLock {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
-        if self.noff == 0 {
-            self.interrupt_enabled = int_enabled;
+        let c = CPU::this_mut();
+        if (*c).noff == 0 {
+            (*c).interrupt_enabled = int_enabled;
         }
-        self.noff += 1;
+        (*c).noff += 1;
         InterruptLock
     }
 
@@ -63,14 +72,14 @@ impl CPU {
 
     /// Switch to another context, return to `switch_back`
     #[inline]
-    pub unsafe fn switch_to(&self, p: &Context) {
-        self.context.switch(p);
+    pub unsafe fn switch_to(&self, p: *const Context) {
+        switch(&self.context, p);
     }
 
     /// Switch back to origin context, return to `switch_to`
     #[inline]
-    pub unsafe fn switch_back(&self, p: &Context) {
-        p.switch(&self.context);
+    pub unsafe fn switch_back(&self, p: *const Context) {
+        switch(p, &self.context);
     }
 
     #[inline]
@@ -100,7 +109,7 @@ pub struct InterruptLock;
 impl Drop for InterruptLock {
     fn drop(&mut self) {
         unsafe {
-            CPU::this_mut().pop_off();
+            (*CPU::this_mut()).pop_off();
         }
     }
 }

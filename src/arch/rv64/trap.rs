@@ -189,7 +189,7 @@ extern "C" fn kernel_trap() {
             // give up the CPU if this is a timer interrupt.
             if arch::cpuid() != 0 {
                 unsafe {
-                    if let Some(run) = CPU::this_mut().proc() {
+                    if let Some(run) = CPU::this_proc() {
                         let run = run.as_mut().unwrap_unchecked();
                         if run.state() == State::Running {
                             run.r#yield();

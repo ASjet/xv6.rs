@@ -27,8 +27,8 @@ impl<T> Mutex<T> {
 
     pub fn lock(&self) -> MutexGuard<'_, T> {
         unsafe {
+            let int_lock = CPU::push_off();
             let cpu = CPU::this_mut();
-            let int_lock = cpu.push_off();
 
             assert!(!self.holding(), "acquire {}", self.name);
 
@@ -74,7 +74,7 @@ impl<T> Mutex<T> {
     pub unsafe fn force_unlock(&self) {
         assert!(self.holding(), "force_unlock {}", self.name);
         self.locked.store(core::ptr::null_mut(), Ordering::Release);
-        CPU::this_mut().pop_off();
+        (*CPU::this_mut()).pop_off();
     }
 }
 

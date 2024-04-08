@@ -91,7 +91,8 @@ impl LinkListAllocator {
     /// which normally should have been returned by a
     /// call to kalloc().  (The exception is when
     /// initializing the allocator; see kinit above.)
-    pub unsafe fn kfree(&self, page: PhysAddr) {
+    pub unsafe fn kfree(&self, addr: impl Into<PhysAddr>) {
+        let page = addr.into();
         if page.page_offset() != 0 || page < self.heap_start || page > self.heap_end {
             panic!("kfree: invalid page: {:?}", page);
         }
@@ -106,7 +107,9 @@ impl LinkListAllocator {
         }
     }
 
-    pub unsafe fn kfree_range(&self, start: PhysAddr, end: PhysAddr) {
+    pub unsafe fn kfree_range(&self, start: impl Into<PhysAddr>, end: impl Into<PhysAddr>) {
+        let start = start.into();
+        let end = end.into();
         for page in (usize::from(start.page_roundup())..=usize::from(end)).step_by(self.page_size) {
             self.kfree(PhysAddr::from(page));
         }

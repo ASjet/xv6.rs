@@ -43,26 +43,28 @@ switch:
 "
 );
 
+type Register = usize;
+
 /// Saved registers for kernel context switches. Internal mutable.
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Context {
-    ra: u64,
-    sp: u64,
+    ra: Register,
+    sp: Register,
 
     // callee-saved
-    s0: u64,
-    s1: u64,
-    s2: u64,
-    s3: u64,
-    s4: u64,
-    s5: u64,
-    s6: u64,
-    s7: u64,
-    s8: u64,
-    s9: u64,
-    s10: u64,
-    s11: u64,
+    s0: Register,
+    s1: Register,
+    s2: Register,
+    s3: Register,
+    s4: Register,
+    s5: Register,
+    s6: Register,
+    s7: Register,
+    s8: Register,
+    s9: Register,
+    s10: Register,
+    s11: Register,
 }
 
 impl Context {
@@ -84,15 +86,21 @@ impl Context {
             s11: 0,
         };
     }
-}
 
-impl Context {
-    /// Switch to `new` context and save current context to self
-    /// Mark `switch` as immutable to make the borrow checker happy
-    pub unsafe fn switch(&self, new: *const Context) {
-        extern "C" {
-            fn switch(save: *const Context, load: *const Context);
-        }
-        switch(self, new);
+    pub fn setup(&mut self, ra: Register, sp: Register) {
+        self.ra = ra;
+        self.sp = sp;
+        self.s0 = 0;
+        self.s1 = 0;
+        self.s2 = 0;
+        self.s3 = 0;
+        self.s4 = 0;
+        self.s5 = 0;
+        self.s6 = 0;
+        self.s7 = 0;
+        self.s8 = 0;
+        self.s9 = 0;
+        self.s10 = 0;
+        self.s11 = 0;
     }
 }
