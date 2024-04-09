@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![feature(riscv_ext_intrinsics)]
+#![feature(const_refs_to_static)]
 #![allow(dead_code)]
 
 pub mod arch;

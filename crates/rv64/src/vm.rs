@@ -93,66 +93,80 @@ pub struct PTE(usize);
 
 impl PTE {
     /// Create a PTE points to `pa`
+    #[inline]
     pub fn new(pa: PhysAddr, flags: usize) -> PTE {
         PTE(PTE_PPN.fill(PA_PPN.get(pa.into())) | PTE_FLAGS.fill(flags))
     }
 
     /// Physical address that the PTE points to
+    #[inline]
     pub fn addr(&self) -> PhysAddr {
         PhysAddr::from(PTE_PPN.get(self.0) << PAGE_OFFSET.width())
     }
 
+    #[inline]
     pub fn set_addr(&mut self, addr: PhysAddr) {
         self.0 = PTE_PPN.set(self.0, PA_PPN.get(addr.into()));
     }
 
     /// The flags of a PTE
+    #[inline]
     pub fn flags(&self) -> usize {
         PTE_FLAGS.get(self.0)
     }
 
+    #[inline]
     pub fn set_flags(&mut self, flags: usize) {
         self.0 = PTE_FLAGS.set_all(self.0) | flags;
     }
 
     /// PTE is valid
+    #[inline]
     pub fn valid(&self) -> bool {
         PTE_V.get(self.0) == 1
     }
 
     /// Page is readable
+    #[inline]
     pub fn readable(&self) -> bool {
         PTE_R.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_readable(&mut self, readable: bool) {
         self.0 = PTE_R.set(self.0, readable as usize);
     }
 
     /// Page is writable
+    #[inline]
     pub fn writable(&self) -> bool {
         PTE_W.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_writable(&mut self, writable: bool) {
         self.0 = PTE_W.set(self.0, writable as usize);
     }
 
     /// Page is executable
+    #[inline]
     pub fn executable(&self) -> bool {
         PTE_X.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_executable(&mut self, executable: bool) {
         self.0 = PTE_X.set(self.0, executable as usize);
     }
 
     /// When RWX is 0b000, the PTE is a pointer to the next level page table;
     /// Otherwise, it is a leaf PTE.
+    #[inline]
     pub fn xwr(&self) -> usize {
         PTE_XWR.get(self.0)
     }
 
+    #[inline]
     pub fn set_xwr(&mut self, xwr: usize) {
         self.0 = PTE_XWR.set(self.0, xwr);
     }
@@ -160,46 +174,56 @@ impl PTE {
     /// Page is accessible to mode U.
     /// With `SUM` bit set in `sstatus`, S mode may also access pages with `U = 1`.
     /// S mode may not execute code on page with `U = 1`
+    #[inline]
     pub fn user(&self) -> bool {
         PTE_U.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_user(&mut self, user: bool) {
         self.0 = PTE_U.set(self.0, user as usize);
     }
 
     /// Page is a global mapping, which exist in all address spaces
+    #[inline]
     pub fn global(&self) -> bool {
         PTE_G.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_global(&mut self, global: bool) {
         self.0 = PTE_G.set(self.0, global as usize);
     }
 
     /// The page has been read, write, or fetched from since the last time `A` was cleared
+    #[inline]
     pub fn accessed(&self) -> bool {
         PTE_A.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_accessed(&mut self, accessed: bool) {
         self.0 = PTE_A.set(self.0, accessed as usize);
     }
 
     /// The page has been written since the last time `D` was cleared
+    #[inline]
     pub fn dirty(&self) -> bool {
         PTE_D.get(self.0) == 1
     }
 
+    #[inline]
     pub fn set_dirty(&mut self, dirty: bool) {
         self.0 = PTE_D.set(self.0, dirty as usize);
     }
 
     /// Reserved for S mode software use
+    #[inline]
     pub fn rsw(&self) -> usize {
         PTE_RSW.get(self.0)
     }
 
+    #[inline]
     pub fn set_rsw(&mut self, rsw: usize) {
         self.0 = PTE_RSW.set(self.0, rsw);
     }
@@ -217,12 +241,14 @@ impl Debug for PTE {
 }
 
 impl From<usize> for PTE {
+    #[inline]
     fn from(addr: usize) -> Self {
         PTE(addr)
     }
 }
 
 impl From<PTE> for usize {
+    #[inline]
     fn from(pte: PTE) -> usize {
         pte.0
     }
@@ -233,22 +259,27 @@ impl From<PTE> for usize {
 pub struct PhysAddr(usize);
 
 impl PhysAddr {
+    #[inline]
     pub const fn null() -> Self {
         PhysAddr(0)
     }
 
+    #[inline]
     pub const fn is_null(&self) -> bool {
         self.0 == 0
     }
 
+    #[inline]
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
 
+    #[inline]
     pub const fn page_roundup(&self) -> PhysAddr {
         PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
     }
 
+    #[inline]
     pub const fn page_rounddown(&self) -> PhysAddr {
         PhysAddr(PA_PPN.get(self.0) << PA_PPN.shift())
     }
@@ -259,18 +290,22 @@ impl PhysAddr {
         }
     }
 
+    #[inline]
     pub const fn as_ptr<T>(&self) -> *const T {
         self.0 as *const T
     }
 
+    #[inline]
     pub const fn as_mut_ptr<T>(&self) -> *mut T {
         self.0 as *mut T
     }
 
+    #[inline]
     pub const unsafe fn as_ref<T>(&self) -> Option<&'static T> {
         self.as_ptr::<T>().as_ref()
     }
 
+    #[inline]
     pub unsafe fn as_mut<T>(&self) -> Option<&'static mut T> {
         self.as_mut_ptr::<T>().as_mut()
     }
@@ -285,6 +320,7 @@ impl Debug for PhysAddr {
 impl Add<usize> for PhysAddr {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: usize) -> Self {
         PhysAddr(self.0 as usize + rhs)
     }
@@ -293,6 +329,7 @@ impl Add<usize> for PhysAddr {
 impl Sub<usize> for PhysAddr {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: usize) -> Self {
         PhysAddr(self.0.saturating_sub(rhs))
     }
@@ -300,24 +337,28 @@ impl Sub<usize> for PhysAddr {
 
 // TODO: check address constraints
 impl From<usize> for PhysAddr {
+    #[inline]
     fn from(addr: usize) -> Self {
         PhysAddr(addr)
     }
 }
 
 impl<T> From<*const T> for PhysAddr {
+    #[inline]
     fn from(addr: *const T) -> Self {
         PhysAddr(addr as usize)
     }
 }
 
 impl<T> From<*mut T> for PhysAddr {
+    #[inline]
     fn from(addr: *mut T) -> Self {
         PhysAddr(addr as usize)
     }
 }
 
 impl From<PhysAddr> for usize {
+    #[inline]
     fn from(addr: PhysAddr) -> usize {
         addr.0
     }
@@ -328,38 +369,47 @@ impl From<PhysAddr> for usize {
 pub struct VirtAddr(usize);
 
 impl VirtAddr {
+    #[inline]
     pub const fn null() -> Self {
         VirtAddr(0)
     }
 
+    #[inline]
     pub const fn is_null(&self) -> bool {
         self.0 == 0
     }
 
+    #[inline]
     pub const fn page_roundup(&self) -> VirtAddr {
         VirtAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
     }
 
+    #[inline]
     pub const fn page_rounddown(&self) -> VirtAddr {
         VirtAddr(PA_PPN.get(self.0) << PA_PPN.shift())
     }
 
+    #[inline]
     pub const fn page_offset(&self) -> usize {
         PAGE_OFFSET.get(self.0)
     }
 
+    #[inline]
     pub const fn as_ptr<T>(&self) -> *const T {
         self.0 as *const T
     }
 
+    #[inline]
     pub const fn as_mut_ptr<T>(&self) -> *mut T {
         self.0 as *mut T
     }
 
+    #[inline]
     pub const unsafe fn as_ref<T>(&self) -> Option<&'static T> {
         self.as_ptr::<T>().as_ref()
     }
 
+    #[inline]
     pub unsafe fn as_mut<T>(&self) -> Option<&'static mut T> {
         self.as_mut_ptr::<T>().as_mut()
     }
@@ -374,6 +424,7 @@ impl Debug for VirtAddr {
 impl Add<usize> for VirtAddr {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: usize) -> Self {
         VirtAddr(self.0 as usize + rhs)
     }
@@ -382,6 +433,7 @@ impl Add<usize> for VirtAddr {
 impl Sub<usize> for VirtAddr {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: usize) -> Self {
         VirtAddr(self.0.saturating_sub(rhs))
     }
@@ -389,12 +441,14 @@ impl Sub<usize> for VirtAddr {
 
 // TODO: check address constraints
 impl From<usize> for VirtAddr {
+    #[inline]
     fn from(addr: usize) -> Self {
         VirtAddr(addr)
     }
 }
 
 impl From<VirtAddr> for usize {
+    #[inline]
     fn from(addr: VirtAddr) -> usize {
         addr.0
     }
@@ -414,11 +468,13 @@ pub struct PageTable<T: PagingSchema> {
 }
 
 impl<T: PagingSchema + 'static> PageTable<T> {
+    #[inline]
     pub fn max_va() -> VirtAddr {
         T::max_va()
     }
 
-    pub fn virt_to_phys(&self, va: VirtAddr) -> Result<PhysAddr, PageTableError> {
+    pub fn virt_to_phys(&self, va: impl Into<VirtAddr>) -> Result<PhysAddr, PageTableError> {
+        let va = va.into();
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
@@ -453,10 +509,11 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
     pub unsafe fn walk(
         &mut self,
-        va: VirtAddr,
+        va: impl Into<VirtAddr>,
         level: usize,
         alloc: Option<&(impl PageAllocator + Sync + Send)>,
     ) -> Result<(&'static PageLevel, &mut PTE), PageTableError> {
+        let va = va.into();
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
@@ -505,12 +562,14 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
     pub unsafe fn map_pages(
         &mut self,
-        va: VirtAddr,
+        va: impl Into<VirtAddr>,
         size: usize,
-        pa: PhysAddr,
+        pa: impl Into<PhysAddr>,
         perm: usize,
         allocator: &(impl PageAllocator + Sync + Send),
     ) -> Result<(), PageTableError> {
+        let va = va.into();
+        let pa = pa.into();
         if size == 0 {
             return Err(PageTableError::InvalidMapSize);
         }

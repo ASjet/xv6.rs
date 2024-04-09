@@ -1,16 +1,15 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, naked_insn, vm::PA_PPN};
-use core::arch::asm;
+use crate::{csr_reg_ro, csr_reg_rw, instruction, vm::PA_PPN};
 use int_enum::IntEnum;
 
-#[inline]
-pub fn sfence_vma() {
-    unsafe { asm!("sfence.vma zero, zero") };
-}
+instruction!(
+    /// Flush TLB
+    sfence_vma, "sfence.vma zero, zero"
+);
 
-naked_insn!(
+instruction!(
     /// Return from S mode to U mode and jump to `sepc`
-    sret, nomem, nostack
+    unsafe sret, "sret", nomem, nostack
 );
 
 /*            Supervisor Trap Setup            */
@@ -54,8 +53,32 @@ pub const SIE_SSIE: Mask = Mask::new(1, 1); // software
 
 csr_reg_rw!(
     /// Supervisor trap handler base address
-    stvec
+    stvec, Stvec
 );
+/// Trap mode
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum TrapMode {
+    Direct = 0,
+    Vectored = 1,
+}
+impl Stvec {
+    /// Returns the trap-vector base-address
+    #[inline]
+    pub fn address(&self) -> usize {
+        self.0 - (self.0 & 0b11)
+    }
+
+    /// Returns the trap-vector mode
+    #[inline]
+    pub fn trap_mode(&self) -> Option<TrapMode> {
+        let mode = self.0 & 0b11;
+        match mode {
+            0 => Some(TrapMode::Direct),
+            1 => Some(TrapMode::Vectored),
+            _ => None,
+        }
+    }
+}
 
 csr_reg_rw!(
     /// Supervisor counter enable

@@ -7,8 +7,34 @@ use rv64::vm::{PhysAddr, PAGE_SIZE};
 
 pub static mut ALLOCATOR: LinkListAllocator = LinkListAllocator::default();
 
+#[inline]
+pub const fn page_size() -> usize {
+    unsafe { ALLOCATOR.page_size() }
+}
+
+#[inline]
+pub fn free_pages() -> usize {
+    unsafe { ALLOCATOR.free_pages() }
+}
+
+#[inline]
+pub unsafe fn kalloc() -> Option<PhysAddr> {
+    ALLOCATOR.kalloc()
+}
+
+#[inline]
+pub unsafe fn kfree(addr: impl Into<PhysAddr>) {
+    ALLOCATOR.kfree(addr);
+}
+
+#[inline]
+pub unsafe fn kfree_range(start: impl Into<PhysAddr>, end: impl Into<PhysAddr>) {
+    ALLOCATOR.kfree_range(start, end);
+}
+
 pub fn init_heap() {
-    let (start, end) = arch::vm::heap_range();
+    let start = arch::vm::heap_start();
+    let end = arch::vm::heap_end();
     println!("init heap: {:?} - {:?}", start, end);
     let pages = unsafe {
         ALLOCATOR = LinkListAllocator::new(start, end, PAGE_SIZE);
@@ -28,8 +54,8 @@ pub struct FreePage {
 }
 
 impl FreePage {
-    pub fn new(addr: PhysAddr) -> *mut Self {
-        usize::from(addr) as *mut FreePage
+    pub fn new(addr: impl Into<usize>) -> *mut Self {
+        addr.into() as *mut FreePage
     }
 }
 
@@ -52,10 +78,14 @@ impl LinkListAllocator {
         }
     }
 
-    pub fn new(heap_start: PhysAddr, heap_end: PhysAddr, page_size: usize) -> Self {
+    pub fn new(
+        heap_start: impl Into<PhysAddr>,
+        heap_end: impl Into<PhysAddr>,
+        page_size: usize,
+    ) -> Self {
         Self {
-            heap_start,
-            heap_end,
+            heap_start: heap_start.into(),
+            heap_end: heap_end.into(),
             page_size,
             free_pages: Mutex::new(0, "init_free_pages"),
             free_list: Mutex::new(0 as *mut FreePage, "init_free_list"),
@@ -83,7 +113,7 @@ impl LinkListAllocator {
         *self.free_pages.lock() -= 1;
 
         let page = PhysAddr::from(page as usize);
-        page.memset(0xAAAAAAAAAAAAAAAAusize, self.page_size);
+        page.memset(0xAAAA_AAAA_AAAA_AAAA_usize, self.page_size);
         Some(page)
     }
 
@@ -98,7 +128,7 @@ impl LinkListAllocator {
         }
 
         unsafe {
-            page.memset(0xFFFFFFFFFFFFFFFFusize, self.page_size);
+            page.memset(0xFFFF_FFFF_FFFF_FFFF_usize, self.page_size);
             let page = FreePage::new(page);
             let mut free_list = self.free_list.lock();
             (*page).next = *free_list;

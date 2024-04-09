@@ -463,12 +463,21 @@ macro_rules! csr_reg_ro {
 }
 
 #[macro_export]
-macro_rules! naked_insn {
-    ($(#[$m:meta])* $reg:ident $(,$($options:ident),*)?) => {
+macro_rules! instruction {
+    ($(#[$m:meta])* unsafe $reg_fn:ident, $asm:expr $(,$($options:ident),*)?) => {
         $(#[$m])*
         #[allow(non_camel_case_types)]
-        pub fn $reg() {
-            unsafe { core::arch::asm!(stringify!($reg) $(,options($($options),*))?) };
+        #[inline]
+        pub unsafe fn $reg_fn() {
+            unsafe { core::arch::asm!($asm $(,options($($options),*))?) };
+        }
+    };
+    ($(#[$m:meta])* $reg_fn:ident, $asm:expr $(,$($options:ident),*)?) => {
+        $(#[$m])*
+        #[allow(non_camel_case_types)]
+        #[inline]
+        pub fn $reg_fn() {
+            unsafe { core::arch::asm!($asm $(,options($($options),*))?) };
         }
     };
 }
@@ -484,6 +493,27 @@ macro_rules! read_linker_symbol {
                 out(reg) r
             );
             r
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! csr_set_clear {
+    ($reg:ident, $setter:ident, $clear:ident, $mask:expr) => {
+        impl $reg {
+            #[inline]
+            pub unsafe fn $setter(&self) {
+                unsafe {
+                    self.set_mask($mask);
+                }
+            }
+
+            #[inline]
+            pub unsafe fn $clear(&self) {
+                unsafe {
+                    self.clear_mask($mask);
+                }
+            }
         }
     };
 }

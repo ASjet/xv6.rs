@@ -6,5 +6,7 @@ pub fn init() {
 }
 
 pub fn init_hart() {
-    crate::arch::vm::enable_paging();
+    unsafe {
+        crate::arch::vm::enable_paging();
+    }
 }
