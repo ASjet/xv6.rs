@@ -1,4 +1,6 @@
-use crate::{csr_reg_ro, mv_reg_rw};
+use crate::{csr_reg_ro, instruction, mv_reg_rw};
+
+instruction!(wfi, "wfi", nomem, nostack);
 
 mv_reg_rw!(
     /// Return address

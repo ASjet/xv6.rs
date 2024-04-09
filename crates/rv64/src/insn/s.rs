@@ -1,16 +1,15 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, naked_insn, vm::PA_PPN};
-use core::arch::asm;
+use crate::{csr_reg_ro, csr_reg_rw, instruction, vm::PA_PPN};
 use int_enum::IntEnum;
 
-#[inline]
-pub fn sfence_vma() {
-    unsafe { asm!("sfence.vma zero, zero") };
-}
+instruction!(
+    /// Flush TLB
+    sfence_vma, "sfence.vma zero, zero"
+);
 
-naked_insn!(
+instruction!(
     /// Return from S mode to U mode and jump to `sepc`
-    sret, nomem, nostack
+    unsafe sret, "sret", nomem, nostack
 );
 
 /*            Supervisor Trap Setup            */

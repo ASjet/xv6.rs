@@ -1,9 +1,9 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, naked_insn};
+use crate::{csr_reg_ro, csr_reg_rw, instruction};
 
-naked_insn!(
+instruction!(
     /// Return from M mode to S mode and jump to `mepc`
-    mret, nomem, nostack
+    unsafe mret, "mret", nomem, nostack
 );
 
 /*            Machine Information Register            */
