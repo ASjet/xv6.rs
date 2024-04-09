@@ -4,7 +4,7 @@ use crate::{
         self,
         def::{self, PG_SIZE},
     },
-    mem::alloc::ALLOCATOR,
+    mem::alloc,
     spinlock::Mutex,
 };
 use core::{mem::size_of, ptr::addr_of_mut};
@@ -166,7 +166,7 @@ impl Proc {
         p.sync.lock().pid = Some(alloc_pid());
 
         p.trapframe = unsafe {
-            ALLOCATOR.kalloc().or_else(|| {
+            alloc::kalloc().or_else(|| {
                 p.free();
                 None
             })
@@ -189,7 +189,7 @@ impl Proc {
     pub fn free(&mut self) {
         if !self.trapframe.is_null() {
             unsafe {
-                ALLOCATOR.kfree(self.trapframe);
+                alloc::kfree(self.trapframe);
             }
             self.trapframe = core::ptr::null_mut();
         }

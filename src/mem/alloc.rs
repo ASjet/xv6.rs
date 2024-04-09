@@ -7,6 +7,31 @@ use rv64::vm::{PhysAddr, PAGE_SIZE};
 
 pub static mut ALLOCATOR: LinkListAllocator = LinkListAllocator::default();
 
+#[inline]
+pub const fn page_size() -> usize {
+    unsafe { ALLOCATOR.page_size() }
+}
+
+#[inline]
+pub fn free_pages() -> usize {
+    unsafe { ALLOCATOR.free_pages() }
+}
+
+#[inline]
+pub unsafe fn kalloc() -> Option<PhysAddr> {
+    ALLOCATOR.kalloc()
+}
+
+#[inline]
+pub unsafe fn kfree(addr: impl Into<PhysAddr>) {
+    ALLOCATOR.kfree(addr);
+}
+
+#[inline]
+pub unsafe fn kfree_range(start: impl Into<PhysAddr>, end: impl Into<PhysAddr>) {
+    ALLOCATOR.kfree_range(start, end);
+}
+
 pub fn init_heap() {
     let (start, end) = arch::vm::heap_range();
     println!("init heap: {:?} - {:?}", start, end);
