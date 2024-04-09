@@ -418,7 +418,8 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         T::max_va()
     }
 
-    pub fn virt_to_phys(&self, va: VirtAddr) -> Result<PhysAddr, PageTableError> {
+    pub fn virt_to_phys(&self, va: impl Into<VirtAddr>) -> Result<PhysAddr, PageTableError> {
+        let va = va.into();
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
@@ -453,10 +454,11 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
     pub unsafe fn walk(
         &mut self,
-        va: VirtAddr,
+        va: impl Into<VirtAddr>,
         level: usize,
         alloc: Option<&(impl PageAllocator + Sync + Send)>,
     ) -> Result<(&'static PageLevel, &mut PTE), PageTableError> {
+        let va = va.into();
         if va >= T::max_va() {
             return Err(PageTableError::InvalidVirtualAddress);
         }
@@ -505,12 +507,14 @@ impl<T: PagingSchema + 'static> PageTable<T> {
 
     pub unsafe fn map_pages(
         &mut self,
-        va: VirtAddr,
+        va: impl Into<VirtAddr>,
         size: usize,
-        pa: PhysAddr,
+        pa: impl Into<PhysAddr>,
         perm: usize,
         allocator: &(impl PageAllocator + Sync + Send),
     ) -> Result<(), PageTableError> {
+        let va = va.into();
+        let pa = pa.into();
         if size == 0 {
             return Err(PageTableError::InvalidMapSize);
         }

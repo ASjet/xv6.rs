@@ -28,14 +28,11 @@ pub type PageTable = rv64::vm::PageTable<rv64::vm::Sv39>;
 
 static mut KPGTBL: *mut PageTable = core::ptr::null_mut();
 
-pub fn heap_range() -> (PhysAddr, PhysAddr) {
+pub fn heap_range() -> (usize, usize) {
     unsafe {
         let start = addr_of!(_heap_start) as usize;
         let end = addr_of!(_heap_end) as usize;
-        (
-            PhysAddr::from(start),
-            PhysAddr::from(end).page_rounddown() - 1,
-        )
+        (start, end)
     }
 }
 
@@ -70,8 +67,6 @@ pub fn init_mapping() {
 
         let mut map_pages_log =
             |name: &str, va: usize, size: usize, pa: usize, perm: usize, err_msg: &str| {
-                let va = VirtAddr::from(va);
-                let pa = PhysAddr::from(pa);
                 kpt.map_pages(va, size, pa, perm, alloc).expect(err_msg);
                 println!(
                     "map 0x{:x} {:?} => {:?} as {}({:03b})",
@@ -158,7 +153,7 @@ pub fn init_mapping() {
     }
 }
 
-pub fn enable_paging() {
+pub unsafe fn enable_paging() {
     let addr = unsafe { KPGTBL as usize };
     // make sure for RAM mapping is working
     assert_eq!(

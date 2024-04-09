@@ -53,8 +53,8 @@ pub struct FreePage {
 }
 
 impl FreePage {
-    pub fn new(addr: PhysAddr) -> *mut Self {
-        usize::from(addr) as *mut FreePage
+    pub fn new(addr: impl Into<usize>) -> *mut Self {
+        addr.into() as *mut FreePage
     }
 }
 
@@ -77,10 +77,14 @@ impl LinkListAllocator {
         }
     }
 
-    pub fn new(heap_start: PhysAddr, heap_end: PhysAddr, page_size: usize) -> Self {
+    pub fn new(
+        heap_start: impl Into<PhysAddr>,
+        heap_end: impl Into<PhysAddr>,
+        page_size: usize,
+    ) -> Self {
         Self {
-            heap_start,
-            heap_end,
+            heap_start: heap_start.into(),
+            heap_end: heap_end.into(),
             page_size,
             free_pages: Mutex::new(0, "init_free_pages"),
             free_list: Mutex::new(0 as *mut FreePage, "init_free_list"),
