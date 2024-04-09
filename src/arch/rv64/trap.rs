@@ -10,7 +10,7 @@ pub unsafe fn init_hart() {
     extern "C" {
         fn kernel_vec();
     }
-    s::stvec.write(kernel_vec as usize);
+    s::stvec.write((kernel_vec as usize).into());
 }
 
 global_asm!(
@@ -69,7 +69,7 @@ pub unsafe fn init_timer_interrupt(hart_id: usize) {
         scratch[4] = interval;
         m::mscratch.write(scratch.as_ptr() as usize);
 
-        m::mtvec.write(timer_vec as usize);
+        m::mtvec.write((timer_vec as usize).into());
 
         // Enable machine-mode interrupts.
         m::mstatus.set_mask(m::MSTATUS_MIE);

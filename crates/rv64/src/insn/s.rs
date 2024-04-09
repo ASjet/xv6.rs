@@ -53,8 +53,32 @@ pub const SIE_SSIE: Mask = Mask::new(1, 1); // software
 
 csr_reg_rw!(
     /// Supervisor trap handler base address
-    stvec
+    stvec, Stvec
 );
+/// Trap mode
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum TrapMode {
+    Direct = 0,
+    Vectored = 1,
+}
+impl Stvec {
+    /// Returns the trap-vector base-address
+    #[inline]
+    pub fn address(&self) -> usize {
+        self.0 - (self.0 & 0b11)
+    }
+
+    /// Returns the trap-vector mode
+    #[inline]
+    pub fn trap_mode(&self) -> Option<TrapMode> {
+        let mode = self.0 & 0b11;
+        match mode {
+            0 => Some(TrapMode::Direct),
+            1 => Some(TrapMode::Vectored),
+            _ => None,
+        }
+    }
+}
 
 csr_reg_rw!(
     /// Supervisor counter enable

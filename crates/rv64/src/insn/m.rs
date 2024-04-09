@@ -1,5 +1,5 @@
 use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, instruction};
+use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, instruction};
 
 instruction!(
     /// Return from M mode to S mode and jump to `mepc`
@@ -88,6 +88,8 @@ csr_reg_rw!(
     /// Machine interrupt-enable register
     mie
 );
+csr_set_clear!(mie, set_msoft, clear_msoft, MIE_MSIE);
+csr_set_clear!(mie, set_ssoft, clear_ssoft, MIE_SSIE);
 pub const MIE_SEIE: Mask = Mask::new(1, 11); // external
 pub const MIE_MTIE: Mask = Mask::new(1, 9); // timer
 pub const MIE_STIE: Mask = Mask::new(1, 7); // timer
@@ -96,8 +98,32 @@ pub const MIE_SSIE: Mask = Mask::new(1, 3); // software
 
 csr_reg_rw!(
     /// Machine trap-handler base address
-    mtvec
+    mtvec, Mtvec
 );
+/// Trap mode
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum TrapMode {
+    Direct = 0,
+    Vectored = 1,
+}
+impl Mtvec {
+    /// Returns the trap-vector base-address
+    #[inline]
+    pub fn address(&self) -> usize {
+        self.0 - (self.0 & 0b11)
+    }
+
+    /// Returns the trap-vector mode
+    #[inline]
+    pub fn trap_mode(&self) -> Option<TrapMode> {
+        let mode = self.0 & 0b11;
+        match mode {
+            0 => Some(TrapMode::Direct),
+            1 => Some(TrapMode::Vectored),
+            _ => None,
+        }
+    }
+}
 
 csr_reg_rw!(
     /// Machine counter enable
@@ -128,7 +154,7 @@ csr_reg_rw!(
 
 csr_reg_rw!(
     /// Machine interrupt pending
-    mip
+    mip, Mip
 );
 pub const MIP_MEIP: Mask = Mask::new(1, 11); // external
 pub const MIP_SEIP: Mask = Mask::new(1, 9); // external
@@ -136,6 +162,17 @@ pub const MIP_MTIP: Mask = Mask::new(1, 7); // timer
 pub const MIP_STIP: Mask = Mask::new(1, 5); // timer
 pub const MIP_MSIP: Mask = Mask::new(1, 3); // software
 pub const MIP_SSIP: Mask = Mask::new(1, 1); // software
+impl Mip {
+    #[inline]
+    pub fn msoft(&self) -> bool {
+        MIP_MSIP.get(self.0) != 0
+    }
+
+    #[inline]
+    pub fn ssoft(&self) -> bool {
+        MIP_SSIP.get(self.0) != 0
+    }
+}
 
 csr_reg_rw!(
     /// Machine trap instruction (transformed)
