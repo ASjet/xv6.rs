@@ -83,7 +83,7 @@ impl LinkListAllocator {
         *self.free_pages.lock() -= 1;
 
         let page = PhysAddr::from(page as usize);
-        page.memset(0xAAAAAAAAAAAAAAAAusize, self.page_size);
+        page.memset(0xAAAA_AAAA_AAAA_AAAA_usize, self.page_size);
         Some(page)
     }
 
@@ -98,7 +98,7 @@ impl LinkListAllocator {
         }
 
         unsafe {
-            page.memset(0xFFFFFFFFFFFFFFFFusize, self.page_size);
+            page.memset(0xFFFF_FFFF_FFFF_FFFF_usize, self.page_size);
             let page = FreePage::new(page);
             let mut free_list = self.free_list.lock();
             (*page).next = *free_list;
