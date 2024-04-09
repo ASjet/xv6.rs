@@ -33,7 +33,8 @@ pub unsafe fn kfree_range(start: impl Into<PhysAddr>, end: impl Into<PhysAddr>) 
 }
 
 pub fn init_heap() {
-    let (start, end) = arch::vm::heap_range();
+    let start = arch::vm::heap_start();
+    let end = arch::vm::heap_end();
     println!("init heap: {:?} - {:?}", start, end);
     let pages = unsafe {
         ALLOCATOR = LinkListAllocator::new(start, end, PAGE_SIZE);

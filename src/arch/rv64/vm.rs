@@ -7,46 +7,59 @@ use rv64::{
     vm::{self, PhysAddr, VirtAddr},
 };
 
-extern "C" {
-    #[link_name = "_stext"]
-    static _text_start: u8;
-    #[link_name = "_etext"]
-    static _text_end: u8;
-    #[link_name = "_sheap"]
-    static _heap_start: u8;
-    #[link_name = "_eheap"]
-    static _heap_end: u8;
-    #[link_name = "_sstack"]
-    static _stack_start: u8;
-    #[link_name = "_estack"]
-    static _stack_end: u8;
-    #[link_name = "trampoline"]
-    static _trampoline: u8;
+macro_rules! addr_reader {
+    ($fn_name:ident, $sym_name:ident) => {
+        #[inline]
+        pub fn $fn_name() -> usize {
+            extern "C" {
+                static $sym_name: u8;
+            }
+            unsafe { addr_of!($sym_name) as usize }
+        }
+    };
 }
+
+addr_reader!(text_start, _stext);
+addr_reader!(text_end, _etext);
+addr_reader!(heap_start, _sheap);
+addr_reader!(heap_end, _eheap);
+addr_reader!(stack_start, _sstack);
+addr_reader!(stack_end, _estack);
+addr_reader!(trampoline, trampoline);
 
 pub type PageTable = rv64::vm::PageTable<rv64::vm::Sv39>;
 
 static mut KPGTBL: *mut PageTable = core::ptr::null_mut();
 
-pub fn heap_range() -> (usize, usize) {
-    unsafe {
-        let start = addr_of!(_heap_start) as usize;
-        let end = addr_of!(_heap_end) as usize;
-        (start, end)
-    }
+pub fn virt_to_phys(va: usize) -> Option<usize> {
+    unsafe { (*KPGTBL).virt_to_phys(va).ok().map(usize::from) }
+}
+
+pub unsafe fn walk(va: usize, alloc: bool) {
+    let alloc = if alloc {
+        Some(&*addr_of!(ALLOCATOR))
+    } else {
+        None
+    };
+    unsafe { (*KPGTBL).walk(va, 0, alloc).unwrap() };
+}
+
+pub unsafe fn map_pages(va: usize, size: usize, pa: usize, perm: usize) {
+    let alloc = &*addr_of!(ALLOCATOR);
+    (*KPGTBL).map_pages(va, size, pa, perm, alloc).unwrap();
 }
 
 pub fn init_mapping() {
     let perm_rw: usize = (vm::PTE_R | vm::PTE_W).mask();
     let perm_rx: usize = (vm::PTE_R | vm::PTE_X).mask();
     unsafe {
-        let text_start = addr_of!(_text_start) as usize; // Should equal to def::KERNEL_BASE
-        let text_end = addr_of!(_text_end) as usize;
-        let heap_start = addr_of!(_heap_start) as usize;
-        let heap_end = addr_of!(_heap_end) as usize;
-        let stack_start = addr_of!(_stack_start) as usize;
-        let stack_end = addr_of!(_stack_end) as usize;
-        let trampoline = addr_of!(_trampoline) as usize;
+        let text_start = text_start(); // Should equal to def::KERNEL_BASE
+        let text_end = text_end();
+        let heap_start = heap_start();
+        let heap_end = heap_end();
+        let stack_start = stack_start();
+        let stack_end = stack_end();
+        let trampoline = trampoline();
 
         println!(
             "heap(0x{:x}): {:?} => {:?}\nstack(0x{:x}): {:?} => {:?}",
