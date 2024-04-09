@@ -496,3 +496,24 @@ macro_rules! read_linker_symbol {
         }
     };
 }
+
+#[macro_export]
+macro_rules! csr_set_clear {
+    ($reg:ident, $setter:ident, $clear:ident, $mask:expr) => {
+        impl $reg {
+            #[inline]
+            pub unsafe fn $setter(&self) {
+                unsafe {
+                    self.set_mask($mask);
+                }
+            }
+
+            #[inline]
+            pub unsafe fn $clear(&self) {
+                unsafe {
+                    self.clear_mask($mask);
+                }
+            }
+        }
+    };
+}
