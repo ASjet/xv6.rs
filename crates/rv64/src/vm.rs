@@ -261,14 +261,15 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         for (l, level) in T::page_levels().iter().enumerate().rev() {
             let pte = cur_pt[level.vpn.get(va.into())];
 
-            if !pte.valid() {
+            let flags = pte.flags();
+            if !flags.valid() {
                 return Err(PageTableError::InvalidPTE(l, pte));
             }
 
             pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
 
-            if pte.xwr() != 0b000 {
-                if !pte.readable() {
+            if flags.xwr() != 0b000 {
+                if !flags.readable() {
                     return Err(PageTableError::InvalidPTE(l, pte));
                 }
                 offset = level.page_offset.get(va.into());
@@ -306,8 +307,10 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                 return Ok((pl, pte));
             }
 
-            if pte.valid() {
-                if pte.xwr() != 0b000 {
+            let flags = pte.flags();
+
+            if flags.valid() {
+                if flags.xwr() != 0b000 {
                     return Ok((pl, pte));
                 }
             } else {
@@ -322,7 +325,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
                             .palloc(page_width)
                             .ok_or(PageTableError::AllocFailed)?;
                         page.memset(0usize, 1 << usize::from(page_width));
-                        *pte = PTE::new(page, PTE_V.get(PTE_FLAGS.mask()));
+                        *pte = PTE::new(page, PteFlags::new());
                     }
                 } else {
                     return Err(PageTableError::InvalidPTE(l, pte.clone()));
@@ -340,7 +343,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         va: impl Into<VirtAddr>,
         size: usize,
         pa: impl Into<PhysAddr>,
-        perm: usize,
+        perm: PteFlags,
         allocator: &(impl PageAllocator + Sync + Send),
     ) -> Result<(), PageTableError> {
         let va = va.into();
@@ -350,13 +353,14 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         }
 
         let end = VirtAddr::from(size - 1).page_rounddown().into();
+        let perm = perm.set_valid(true);
 
         for offset in (0..=end).step_by(PAGE_SIZE) {
             let (_, pte) = self.walk(va + offset, 0, Some(allocator))?;
-            if pte.valid() {
+            if pte.flags().valid() {
                 return Err(PageTableError::DuplicateMapping(0, *pte));
             }
-            *pte = PTE::new(pa + offset, PTE_FLAGS.fill(PTE_V.set(perm, 1)));
+            *pte = PTE::new(pa + offset, perm);
         }
 
         Ok(())
@@ -370,9 +374,10 @@ impl<T: PagingSchema + 'static> PageTable<T> {
     ) -> core::fmt::Result {
         let offset = cur_depth * 4;
         for (i, pte) in self.table.iter().enumerate() {
-            if pte.valid() {
+            let flags = pte.flags();
+            if flags.valid() {
                 write!(f, "{} {:offset$}PTE[{}] = {:?}\n", cur_depth, "", i, pte)?;
-                if pte.xwr() == 0b000 && cur_depth < max_depth {
+                if flags.xwr() == 0b000 && cur_depth < max_depth {
                     unsafe { pte.addr().as_mut::<Self>() }.unwrap().dump(
                         f,
                         cur_depth + 1,
