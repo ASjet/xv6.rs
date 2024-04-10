@@ -1,4 +1,4 @@
-use crate::insn::Mask;
+use crate::Mask;
 use core::{
     fmt::Debug,
     marker::PhantomData,

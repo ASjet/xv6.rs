@@ -1,5 +1,5 @@
 use super::{PageLevel, PagingSchema, VirtAddr, PAGE_OFFSET, PTE_FLAGS, VPN_WIDTH};
-use crate::insn::Mask;
+use crate::Mask;
 
 const VA_WIDTH: usize = 39;
 const MAX_VA: VirtAddr = VirtAddr((1 << VA_WIDTH) - 1);
