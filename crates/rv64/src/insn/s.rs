@@ -1,5 +1,5 @@
-use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, instruction, vm::PA_PPN};
+use super::RegisterRW;
+use crate::{csr_reg_ro, csr_reg_rw, instruction, vm::PA_PPN, Mask, PrivilegeLevel};
 use int_enum::IntEnum;
 
 instruction!(

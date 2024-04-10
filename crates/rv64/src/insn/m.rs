@@ -1,5 +1,5 @@
-use super::{Mask, PrivilegeLevel, RegisterRW};
-use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, instruction};
+use super::RegisterRW;
+use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, instruction, Mask, PrivilegeLevel};
 
 instruction!(
     /// Return from M mode to S mode and jump to `mepc`

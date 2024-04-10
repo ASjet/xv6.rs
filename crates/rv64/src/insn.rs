@@ -1,5 +1,4 @@
 use crate::Mask;
-use int_enum::IntEnum;
 
 /// Machine Privileged Level
 pub mod m;
@@ -9,15 +8,6 @@ pub mod s;
 
 /// Unprivileged Level
 pub mod u;
-
-#[derive(Debug, IntEnum, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(u8)]
-pub enum PrivilegeLevel {
-    U = 0b00,
-    S = 0b01,
-    Reserved = 0b10,
-    M = 0b11,
-}
 
 pub trait RegisterRW<T: From<usize> + Into<usize>> {
     /// Read the value of the register.

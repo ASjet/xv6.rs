@@ -5,6 +5,7 @@ pub mod insn;
 pub mod vm;
 
 use core::mem::size_of;
+use int_enum::IntEnum;
 
 const BIT_INDEX: &str = "FEDCBA9876543210";
 
@@ -119,4 +120,13 @@ impl From<Mask> for usize {
     fn from(mask: Mask) -> usize {
         mask.mask >> mask.shift
     }
+}
+
+#[derive(Debug, IntEnum, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum PrivilegeLevel {
+    U = 0b00,
+    S = 0b01,
+    Reserved = 0b10,
+    M = 0b11,
 }
