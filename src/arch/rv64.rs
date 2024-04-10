@@ -13,12 +13,12 @@ pub fn is_intr_on() -> bool {
 
 #[inline]
 pub fn intr_on() {
-    unsafe { s::sstatus.set_mask(s::SSTATUS_SIE) };
+    unsafe { s::sstatus.set_mask(s::sstatus::SIE) };
 }
 
 #[inline]
 pub fn intr_off() {
-    unsafe { s::sstatus.clear_mask(s::SSTATUS_SIE) };
+    unsafe { s::sstatus.clear_mask(s::sstatus::SIE) };
 }
 
 #[inline]

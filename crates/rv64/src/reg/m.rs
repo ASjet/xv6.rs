@@ -35,34 +35,35 @@ csr_reg_rw!(
     mstatus
 );
 impl mstatus {
+    pub const TSR: Mask = Mask::new(1, 22);
+    pub const TW: Mask = Mask::new(1, 21);
+    pub const TVM: Mask = Mask::new(1, 20);
+    pub const MXR: Mask = Mask::new(1, 19);
+    pub const SUM: Mask = Mask::new(1, 18);
+    pub const MPRV: Mask = Mask::new(1, 17);
+    pub const XS: Mask = Mask::new(2, 15);
+    pub const FS: Mask = Mask::new(2, 13);
+    pub const MPP: Mask = Mask::new(2, 11); // Machine-mode Previous Privilege
+    pub const VS: Mask = Mask::new(2, 9);
+    pub const SPP: Mask = Mask::new(1, 8); // Supervisor Previous Privilege
+    pub const MPIE: Mask = Mask::new(1, 7);
+    pub const UBE: Mask = Mask::new(1, 6);
+    pub const SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
+    pub const MIE: Mask = Mask::new(1, 3); // Machine-mode Interrupt Enable
+    pub const SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+
     /// Read mstatus.MPP
     #[inline]
     pub fn r_mpp(&self) -> PrivilegeLevel {
-        PrivilegeLevel::try_from(self.read_mask(MSTATUS_MPP) as u8).unwrap()
+        PrivilegeLevel::try_from(self.read_mask(mstatus::MPP) as u8).unwrap()
     }
 
     /// Write mstatus.MPP
     #[inline]
     pub unsafe fn w_mpp(&self, l: PrivilegeLevel) {
-        unsafe { self.write_mask(MSTATUS_MPP, l as usize) }
+        unsafe { self.write_mask(mstatus::MPP, l as usize) }
     }
 }
-pub const MSTATUS_TSR: Mask = Mask::new(1, 22);
-pub const MSTATUS_TW: Mask = Mask::new(1, 21);
-pub const MSTATUS_TVM: Mask = Mask::new(1, 20);
-pub const MSTATUS_MXR: Mask = Mask::new(1, 19);
-pub const MSTATUS_SUM: Mask = Mask::new(1, 18);
-pub const MSTATUS_MPRV: Mask = Mask::new(1, 17);
-pub const MSTATUS_XS: Mask = Mask::new(2, 15);
-pub const MSTATUS_FS: Mask = Mask::new(2, 13);
-pub const MSTATUS_MPP: Mask = Mask::new(2, 11); // Machine-mode Previous Privilege
-pub const MSTATUS_VS: Mask = Mask::new(2, 9);
-pub const MSTATUS_SPP: Mask = Mask::new(1, 8); // Supervisor Previous Privilege
-pub const MSTATUS_MPIE: Mask = Mask::new(1, 7);
-pub const MSTATUS_UBE: Mask = Mask::new(1, 6);
-pub const MSTATUS_SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
-pub const MSTATUS_MIE: Mask = Mask::new(1, 3); // Machine-mode Interrupt Enable
-pub const MSTATUS_SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
 
 csr_reg_rw!(
     /// ISA and extensions
@@ -83,24 +84,28 @@ csr_reg_rw!(
     /// Machine interrupt-enable register
     mie
 );
-csr_set_clear!(mie, set_msoft, clear_msoft, MIE_MSIE);
-csr_set_clear!(mie, set_ssoft, clear_ssoft, MIE_SSIE);
-pub const MIE_SEIE: Mask = Mask::new(1, 11); // external
-pub const MIE_MTIE: Mask = Mask::new(1, 9); // timer
-pub const MIE_STIE: Mask = Mask::new(1, 7); // timer
-pub const MIE_MSIE: Mask = Mask::new(1, 5); // software
-pub const MIE_SSIE: Mask = Mask::new(1, 3); // software
+impl mie {
+    pub const SEIE: Mask = Mask::new(1, 11); // external
+    pub const MTIE: Mask = Mask::new(1, 9); // timer
+    pub const STIE: Mask = Mask::new(1, 7); // timer
+    pub const MSIE: Mask = Mask::new(1, 5); // software
+    pub const SSIE: Mask = Mask::new(1, 3); // software
+}
+csr_set_clear!(mie, set_msoft, clear_msoft, mie::MSIE);
+csr_set_clear!(mie, set_ssoft, clear_ssoft, mie::SSIE);
 
 csr_reg_rw!(
     /// Machine trap-handler base address
     mtvec, Mtvec
 );
+
 /// Trap mode
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum TrapMode {
+pub enum TrapModeM {
     Direct = 0,
     Vectored = 1,
 }
+
 impl Mtvec {
     /// Returns the trap-vector base-address
     #[inline]
@@ -110,11 +115,11 @@ impl Mtvec {
 
     /// Returns the trap-vector mode
     #[inline]
-    pub fn trap_mode(&self) -> Option<TrapMode> {
+    pub fn trap_mode(&self) -> Option<TrapModeM> {
         let mode = self.0 & 0b11;
         match mode {
-            0 => Some(TrapMode::Direct),
-            1 => Some(TrapMode::Vectored),
+            0 => Some(TrapModeM::Direct),
+            1 => Some(TrapModeM::Vectored),
             _ => None,
         }
     }
@@ -151,21 +156,23 @@ csr_reg_rw!(
     /// Machine interrupt pending
     mip, Mip
 );
-pub const MIP_MEIP: Mask = Mask::new(1, 11); // external
-pub const MIP_SEIP: Mask = Mask::new(1, 9); // external
-pub const MIP_MTIP: Mask = Mask::new(1, 7); // timer
-pub const MIP_STIP: Mask = Mask::new(1, 5); // timer
-pub const MIP_MSIP: Mask = Mask::new(1, 3); // software
-pub const MIP_SSIP: Mask = Mask::new(1, 1); // software
+impl mip {
+    pub const MEIP: Mask = Mask::new(1, 11); // external
+    pub const SEIP: Mask = Mask::new(1, 9); // external
+    pub const MTIP: Mask = Mask::new(1, 7); // timer
+    pub const STIP: Mask = Mask::new(1, 5); // timer
+    pub const MSIP: Mask = Mask::new(1, 3); // software
+    pub const SSIP: Mask = Mask::new(1, 1); // software
+}
 impl Mip {
     #[inline]
     pub fn msoft(&self) -> bool {
-        MIP_MSIP.get(self.0) != 0
+        mip::MSIP.get(self.0) != 0
     }
 
     #[inline]
     pub fn ssoft(&self) -> bool {
-        MIP_SSIP.get(self.0) != 0
+        mip::SSIP.get(self.0) != 0
     }
 }
 

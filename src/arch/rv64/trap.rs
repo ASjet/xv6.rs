@@ -72,10 +72,10 @@ pub unsafe fn init_timer_interrupt(hart_id: usize) {
         m::mtvec.write((timer_vec as usize).into());
 
         // Enable machine-mode interrupts.
-        m::mstatus.set_mask(m::MSTATUS_MIE);
+        m::mstatus.set_mask(m::mstatus::MIE);
 
         // Enable machine-mode timer interrupts.
-        m::mie.set_mask(m::MIE_MTIE);
+        m::mie.set_mask(m::mie::MTIE);
     }
 }
 

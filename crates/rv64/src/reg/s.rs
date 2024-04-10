@@ -8,28 +8,30 @@ csr_reg_rw!(
     /// Supervisor status register
     sstatus, Sstatus
 );
-pub const SSTATUS_SD: Mask = Mask::new(1, 63);
-pub const SSTATUS_UXL: Mask = Mask::new(2, 32);
-pub const SSTATUS_MXR: Mask = Mask::new(1, 19);
-pub const SSTATUS_SUM: Mask = Mask::new(1, 18);
-pub const SSTATUS_XS: Mask = Mask::new(2, 15);
-pub const SSTATUS_FS: Mask = Mask::new(2, 13);
-pub const SSTATUS_VS: Mask = Mask::new(2, 9);
-pub const SSTATUS_SPP: Mask = Mask::new(1, 8); // Previous mode, 1=Supervisor, 0=User
-pub const SSTATUS_UBE: Mask = Mask::new(1, 6);
-pub const SSTATUS_SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
-pub const SSTATUS_SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+impl sstatus {
+    pub const SD: Mask = Mask::new(1, 63);
+    pub const UXL: Mask = Mask::new(2, 32);
+    pub const MXR: Mask = Mask::new(1, 19);
+    pub const SUM: Mask = Mask::new(1, 18);
+    pub const XS: Mask = Mask::new(2, 15);
+    pub const FS: Mask = Mask::new(2, 13);
+    pub const VS: Mask = Mask::new(2, 9);
+    pub const SPP: Mask = Mask::new(1, 8); // Previous mode, 1=Supervisor, 0=User
+    pub const UBE: Mask = Mask::new(1, 6);
+    pub const SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
+    pub const SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+}
 impl Sstatus {
     /// Read `sstatus.SPP`
     #[inline]
     pub fn spp(&self) -> PrivilegeLevel {
-        unsafe { PrivilegeLevel::try_from(SSTATUS_SPP.get(self.0) as u8).unwrap_unchecked() }
+        unsafe { PrivilegeLevel::try_from(sstatus::SPP.get(self.0) as u8).unwrap_unchecked() }
     }
 
     /// Read `sstatus.SIE`
     #[inline]
     pub fn sie(&self) -> bool {
-        SSTATUS_SIE.get_raw(self.0) == 1
+        sstatus::SIE.get_raw(self.0) == 1
     }
 }
 
@@ -37,9 +39,11 @@ csr_reg_rw!(
     /// Supervisor interrupt-enable register
     sie
 );
-pub const SIE_SEIE: Mask = Mask::new(1, 9); // external
-pub const SIE_STIE: Mask = Mask::new(1, 5); // timer
-pub const SIE_SSIE: Mask = Mask::new(1, 1); // software
+impl sie {
+    pub const SEIE: Mask = Mask::new(1, 9); // external
+    pub const STIE: Mask = Mask::new(1, 5); // timer
+    pub const SSIE: Mask = Mask::new(1, 1); // software
+}
 
 csr_reg_rw!(
     /// Supervisor trap handler base address
@@ -47,7 +51,7 @@ csr_reg_rw!(
 );
 /// Trap mode
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum TrapMode {
+pub enum TrapModeS {
     Direct = 0,
     Vectored = 1,
 }
@@ -60,11 +64,11 @@ impl Stvec {
 
     /// Returns the trap-vector mode
     #[inline]
-    pub fn trap_mode(&self) -> Option<TrapMode> {
+    pub fn trap_mode(&self) -> Option<TrapModeS> {
         let mode = self.0 & 0b11;
         match mode {
-            0 => Some(TrapMode::Direct),
-            1 => Some(TrapMode::Vectored),
+            0 => Some(TrapModeS::Direct),
+            1 => Some(TrapModeS::Vectored),
             _ => None,
         }
     }
@@ -98,8 +102,10 @@ csr_reg_rw!(
     /// Supervisor trap cause
     scause, Scause
 );
-pub const SCAUSE_INTERRUPT: Mask = Mask::new(1, 63); // 1: interrupt, 0: exception
-pub const SCAUSE_EXCEPTION: Mask = Mask::new(63, 0);
+impl scause {
+    pub const INTERRUPT: Mask = Mask::new(1, 63); // 1: interrupt, 0: exception
+    pub const EXCEPTION: Mask = Mask::new(63, 0);
+}
 #[derive(Debug)]
 pub enum ScauseInterrupt {
     Reserved(usize),
@@ -131,15 +137,15 @@ pub enum ScauseException {
 }
 impl Scause {
     pub fn is_interrupt(&self) -> bool {
-        SCAUSE_INTERRUPT.get(self.0) == 1
+        scause::INTERRUPT.get(self.0) == 1
     }
 
     pub fn is_exception(&self) -> bool {
-        SCAUSE_INTERRUPT.get(self.0) == 0
+        scause::INTERRUPT.get(self.0) == 0
     }
 
     pub fn interrupt(&self) -> ScauseInterrupt {
-        let except = SCAUSE_EXCEPTION.get(self.0);
+        let except = scause::EXCEPTION.get(self.0);
         match except {
             0 => ScauseInterrupt::Reserved(except),
             1 => ScauseInterrupt::SupervisorSoftwareInterrupt,
@@ -155,7 +161,7 @@ impl Scause {
     }
 
     pub fn exception(&self) -> ScauseException {
-        let except = SCAUSE_EXCEPTION.get(self.0);
+        let except = scause::EXCEPTION.get(self.0);
         match except {
             0 => ScauseException::InsnAddrMisaligned,
             1 => ScauseException::InsnAccessFault,

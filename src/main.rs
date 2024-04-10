@@ -100,7 +100,7 @@ fn start() -> ! {
         // Delegate all interrupts and exceptions to supervisor mode.
         m::medeleg.write(0xffff);
         m::mideleg.write(0xffff);
-        s::sie.set_mask(s::SIE_SEIE | s::SIE_STIE | s::SIE_SSIE);
+        s::sie.set_mask(s::sie::SEIE | s::sie::STIE | s::sie::SSIE);
 
         // Configure Physical Memory Protection to give supervisor mode
         // access to all of physical memory.
