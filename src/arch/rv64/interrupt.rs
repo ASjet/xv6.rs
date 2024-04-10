@@ -3,7 +3,7 @@
 use crate::arch::def;
 use crate::io::{BaseIO, ScratchIO};
 use crate::{arch, println};
-use rv64::insn::{s, RegisterRW};
+use rv64::reg::{s, RegisterRW};
 
 const PLIC_BASE: BaseIO<u32> = BaseIO::new(def::PLIC as usize);
 const PLIC_MENABLE: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x2000, 0x100);

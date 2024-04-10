@@ -2,6 +2,7 @@
 #![feature(const_ptr_as_ref)]
 
 pub mod insn;
+pub mod reg;
 pub mod vm;
 
 use core::mem::size_of;

@@ -1,4 +1,4 @@
-use rv64::insn::{s, u, RegisterRW};
+use rv64::reg::{s, u, RegisterRW};
 
 pub mod def;
 pub mod interrupt;

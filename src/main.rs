@@ -61,8 +61,9 @@ use core::sync::atomic::compiler_fence;
 use core::sync::atomic::AtomicBool;
 use core::sync::atomic::Ordering;
 use riscv_rt::entry;
-use rv64::insn::{self, m, s, u, RegisterRO, RegisterRW};
+use rv64::insn;
 use rv64::read_linker_symbol;
+use rv64::reg::{m, s, u, RegisterRO, RegisterRW};
 use xv6::arch;
 use xv6::arch::interrupt;
 use xv6::arch::trap;
@@ -109,13 +110,13 @@ fn start() -> ! {
         arch::trap::init_timer_interrupt(hart_id);
 
         // set M Previous Privilege mode to Supervisor, for mret.
-        m::mstatus.w_mpp(insn::PrivilegeLevel::S);
+        m::mstatus.w_mpp(rv64::PrivilegeLevel::S);
         // set M Exception Program Counter to main, for mret.
         m::mepc.write(main as usize);
         // Keep each CPU's hartid in its tp register, for cpuid().
         u::tp.write(hart_id);
 
-        m::mret();
+        insn::mret();
         unreachable_unchecked();
     }
 }

@@ -2,7 +2,7 @@ use super::{def, interrupt};
 use crate::arch;
 use crate::proc::{State, CPU};
 use core::{arch::global_asm, panic};
-use rv64::insn::{self, m, s, RegisterRO, RegisterRW};
+use rv64::reg::{m, s, RegisterRO, RegisterRW};
 
 static mut TIMER_SCRATCH: [[u64; 5]; crate::NCPU] = [[0; 5]; crate::NCPU];
 
@@ -170,7 +170,7 @@ extern "C" fn kernel_trap() {
     let sstatus = s::sstatus.read();
 
     assert!(
-        sstatus.spp() == insn::PrivilegeLevel::S,
+        sstatus.spp() == rv64::PrivilegeLevel::S,
         "kernel trap: not from supervisor mode"
     );
     assert!(!arch::is_intr_on(), "kernel_trap: interrupts enabled");
