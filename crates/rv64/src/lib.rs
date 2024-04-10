@@ -29,40 +29,40 @@ impl Mask {
         }
     }
 
-    /// Get the value at the mask in the target.
+    /// Read the value at the mask in the target.
     #[inline]
-    pub const fn get(&self, target: usize) -> usize {
+    pub const fn read(&self, target: usize) -> usize {
         (target & self.mask) >> self.shift
     }
 
     /// Equal to `target & mask`
     #[inline]
-    pub const fn get_raw(&self, target: usize) -> usize {
+    pub const fn read_raw(&self, target: usize) -> usize {
         target & self.mask
     }
 
-    /// Set the value at the mask in the target.
+    /// Write value at the mask in the target.
     #[inline]
-    pub const fn set(&self, target: usize, value: usize) -> usize {
+    pub const fn write(&self, target: usize, value: usize) -> usize {
         (target & !self.mask) | ((value << self.shift) & self.mask)
+    }
+
+    /// Fill the mask with the value.
+    #[inline]
+    pub const fn make(&self, value: usize) -> usize {
+        (value << self.shift) & self.mask
     }
 
     /// Set all bits at the mask in the target.
     #[inline]
-    pub const fn set_all(&self, target: usize) -> usize {
+    pub const fn set(&self, target: usize) -> usize {
         target | self.mask
     }
 
     /// Clear all bits at the mask in the target.
     #[inline]
-    pub const fn clear_all(&self, target: usize) -> usize {
+    pub const fn clear(&self, target: usize) -> usize {
         target & !self.mask
-    }
-
-    /// Fill the mask with the value.
-    #[inline]
-    pub const fn fill(&self, value: usize) -> usize {
-        self.set(0, value)
     }
 
     /// Get the mask value

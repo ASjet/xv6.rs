@@ -23,25 +23,25 @@ pub trait RegisterRW<T: From<usize> + Into<usize>> {
     /// Read the value of the register at the mask.
     #[inline]
     fn read_mask(&self, mask: Mask) -> usize {
-        mask.get(self.read().into())
+        mask.read(self.read().into())
     }
 
     /// Write the value of the register at the mask.
     #[inline]
     unsafe fn write_mask(&self, mask: Mask, value: usize) {
-        self.write(mask.set(self.read().into(), value).into())
+        self.write(mask.write(self.read().into(), value).into())
     }
 
     /// Set all bits at the mask in the register.
     #[inline]
     unsafe fn set_mask(&self, mask: Mask) {
-        self.write(mask.set_all(self.read().into()).into())
+        self.write(mask.set(self.read().into()).into())
     }
 
     /// Clear all bits at the mask in the register.
     #[inline]
     unsafe fn clear_mask(&self, mask: Mask) {
-        self.write(mask.clear_all(self.read().into()).into())
+        self.write(mask.clear(self.read().into()).into())
     }
 }
 
@@ -52,7 +52,7 @@ pub trait RegisterRO<T: From<usize> + Into<usize>> {
     /// Read the value of the register at the mask.
     #[inline]
     fn read_mask(&self, mask: Mask) -> T {
-        mask.get(self.read().into()).into()
+        mask.read(self.read().into()).into()
     }
 }
 

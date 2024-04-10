@@ -26,13 +26,13 @@ impl Sstatus {
     /// Read `sstatus.SPP`
     #[inline]
     pub fn spp(&self) -> PrivilegeLevel {
-        unsafe { PrivilegeLevel::try_from(sstatus::SPP.get(self.0) as u8).unwrap_unchecked() }
+        unsafe { PrivilegeLevel::try_from(sstatus::SPP.read(self.0) as u8).unwrap_unchecked() }
     }
 
     /// Read `sstatus.SIE`
     #[inline]
     pub fn sie(&self) -> bool {
-        sstatus::SIE.get_raw(self.0) == 1
+        sstatus::SIE.read_raw(self.0) == 1
     }
 }
 
@@ -138,15 +138,15 @@ pub enum ScauseException {
 }
 impl Scause {
     pub fn is_interrupt(&self) -> bool {
-        scause::INTERRUPT.get(self.0) == 1
+        scause::INTERRUPT.read(self.0) == 1
     }
 
     pub fn is_exception(&self) -> bool {
-        scause::INTERRUPT.get(self.0) == 0
+        scause::INTERRUPT.read(self.0) == 0
     }
 
     pub fn interrupt(&self) -> ScauseInterrupt {
-        let except = scause::EXCEPTION.get(self.0);
+        let except = scause::EXCEPTION.read(self.0);
         match except {
             0 => ScauseInterrupt::Reserved(except),
             1 => ScauseInterrupt::SupervisorSoftwareInterrupt,
@@ -162,7 +162,7 @@ impl Scause {
     }
 
     pub fn exception(&self) -> ScauseException {
-        let except = scause::EXCEPTION.get(self.0);
+        let except = scause::EXCEPTION.read(self.0);
         match except {
             0 => ScauseException::InsnAddrMisaligned,
             1 => ScauseException::InsnAccessFault,
@@ -238,9 +238,9 @@ impl satp {
     #[inline]
     pub unsafe fn set(&self, mode: SatpMode, asid: usize, pa: usize) {
         self.write(
-            (satp::MODE.fill(mode as usize))
-                | (satp::ASID.fill(asid))
-                | (satp::PPN.fill(PA_PPN.get(pa))),
+            (satp::MODE.make(mode as usize))
+                | (satp::ASID.make(asid))
+                | (satp::PPN.make(PA_PPN.read(pa))),
         );
     }
 }

@@ -46,17 +46,17 @@ impl PhysAddr {
 
     #[inline]
     pub const fn page_offset(&self) -> usize {
-        PAGE_OFFSET.get(self.0)
+        PAGE_OFFSET.read(self.0)
     }
 
     #[inline]
     pub const fn page_roundup(&self) -> PhysAddr {
-        PhysAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
+        PhysAddr(PA_PPN.read(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
     }
 
     #[inline]
     pub const fn page_rounddown(&self) -> PhysAddr {
-        PhysAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+        PhysAddr(PA_PPN.read(self.0) << PA_PPN.shift())
     }
 
     pub unsafe fn memset<T: Sized + Copy>(&self, value: T, len: usize) {
@@ -156,17 +156,17 @@ impl VirtAddr {
 
     #[inline]
     pub const fn page_roundup(&self) -> VirtAddr {
-        VirtAddr(PA_PPN.get(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
+        VirtAddr(PA_PPN.read(self.0 + PAGE_SIZE - 1) << PA_PPN.shift())
     }
 
     #[inline]
     pub const fn page_rounddown(&self) -> VirtAddr {
-        VirtAddr(PA_PPN.get(self.0) << PA_PPN.shift())
+        VirtAddr(PA_PPN.read(self.0) << PA_PPN.shift())
     }
 
     #[inline]
     pub const fn page_offset(&self) -> usize {
-        PAGE_OFFSET.get(self.0)
+        PAGE_OFFSET.read(self.0)
     }
 
     #[inline]
@@ -259,20 +259,20 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         let mut offset = va.page_offset();
 
         for (l, level) in T::page_levels().iter().enumerate().rev() {
-            let pte = cur_pt[level.vpn.get(va.into())];
+            let pte = cur_pt[level.vpn.read(va.into())];
 
             let flags = pte.flags();
             if !flags.valid() {
                 return Err(PageTableError::InvalidPTE(l, pte));
             }
 
-            pa = PhysAddr::from(level.pa_ppn.fill(level.pte_ppn.get(pte.into())));
+            pa = PhysAddr::from(level.pa_ppn.make(level.pte_ppn.read(pte.into())));
 
             if flags.xwr() != 0b000 {
                 if !flags.readable() {
                     return Err(PageTableError::InvalidPTE(l, pte));
                 }
-                offset = level.page_offset.get(va.into());
+                offset = level.page_offset.read(va.into());
                 break;
             }
 
@@ -301,7 +301,7 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         let mut cur_pt = self;
 
         for (l, pl) in T::page_levels().iter().enumerate().rev() {
-            let pte = &mut cur_pt[pl.vpn.get(va.into())];
+            let pte = &mut cur_pt[pl.vpn.read(va.into())];
 
             if l == level {
                 return Ok((pl, pte));

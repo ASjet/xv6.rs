@@ -169,12 +169,12 @@ impl mip {
 impl Mip {
     #[inline]
     pub fn msoft(&self) -> bool {
-        mip::MSIP.get(self.0) != 0
+        mip::MSIP.read(self.0) != 0
     }
 
     #[inline]
     pub fn ssoft(&self) -> bool {
-        mip::SSIP.get(self.0) != 0
+        mip::SSIP.read(self.0) != 0
     }
 }
 
