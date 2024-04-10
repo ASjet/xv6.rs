@@ -82,8 +82,22 @@ pub fn init_mapping() {
             |name: &str, va: usize, size: usize, pa: usize, perm: usize, err_msg: &str| {
                 kpt.map_pages(va, size, pa, perm, alloc).expect(err_msg);
                 println!(
-                    "map 0x{:x} {:?} => {:?} as {}({:03b})",
-                    size, pa, va, name, perm
+                    "map 0x{:x} {:?} => {:?} as {}({})",
+                    size,
+                    pa,
+                    va,
+                    name,
+                    match (perm & 0b1110) >> 1 {
+                        0b000 => "---",
+                        0b001 => "--r",
+                        0b010 => "-w-",
+                        0b011 => "-wr",
+                        0b100 => "x--",
+                        0b101 => "x-r",
+                        0b110 => "xw-",
+                        0b111 => "xwr",
+                        _ => "???",
+                    }
                 );
             };
 
