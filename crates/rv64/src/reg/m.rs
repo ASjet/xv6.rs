@@ -64,6 +64,7 @@ impl mstatus {
         unsafe { self.write_mask(mstatus::MPP, l as usize) }
     }
 }
+csr_set_clear!(mstatus, set_mie, clear_mie, mstatus::MIE);
 
 csr_reg_rw!(
     /// ISA and extensions
@@ -91,6 +92,7 @@ impl mie {
     pub const MSIE: Mask = Mask::new(1, 5); // software
     pub const SSIE: Mask = Mask::new(1, 3); // software
 }
+csr_set_clear!(mie, set_mtie, clear_mtie, mie::MTIE);
 csr_set_clear!(mie, set_msoft, clear_msoft, mie::MSIE);
 csr_set_clear!(mie, set_ssoft, clear_ssoft, mie::SSIE);
 

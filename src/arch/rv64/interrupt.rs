@@ -68,7 +68,7 @@ pub fn dev_intr() -> Source {
 
                 // Acknowledge the software interrupt by clearing
                 // the SSIP bit in sip.
-                unsafe { reg::sip.clear_mask(reg::SIP_SSIP) };
+                unsafe { reg::sip.clear_ssip() };
 
                 return Source::Timer;
             }

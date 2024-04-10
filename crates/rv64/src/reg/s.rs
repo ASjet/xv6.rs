@@ -1,5 +1,5 @@
 use super::RegisterRW;
-use crate::{csr_reg_ro, csr_reg_rw, vm::PA_PPN, Mask, PrivilegeLevel};
+use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, vm::PA_PPN, Mask, PrivilegeLevel};
 use int_enum::IntEnum;
 
 /*            Supervisor Trap Setup            */
@@ -21,6 +21,7 @@ impl sstatus {
     pub const SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
     pub const SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
 }
+csr_set_clear!(sstatus, set_sie, clear_sie, sstatus::SIE);
 impl Sstatus {
     /// Read `sstatus.SPP`
     #[inline]
@@ -199,9 +200,12 @@ csr_reg_rw!(
     /// Supervisor interrupt pending
     sip
 );
-pub const SIP_SEIP: Mask = Mask::new(1, 9); // external
-pub const SIP_STIP: Mask = Mask::new(1, 5); // timer
-pub const SIP_SSIP: Mask = Mask::new(1, 1); // software
+impl sip {
+    pub const SEIP: Mask = Mask::new(1, 9); // external
+    pub const STIP: Mask = Mask::new(1, 5); // timer
+    pub const SSIP: Mask = Mask::new(1, 1); // software
+}
+csr_set_clear!(sip, set_ssip, clear_ssip, sip::SSIP);
 
 /*            Supervisor Protection and Translation            */
 
@@ -209,9 +213,11 @@ csr_reg_rw!(
     /// Supervisor address translation and protection
     satp
 );
-pub const SATP_MODE: Mask = Mask::new(4, 60);
-pub const SATP_ASID: Mask = Mask::new(16, 44);
-pub const SATP_PPN: Mask = Mask::new(44, 0);
+impl satp {
+    pub const MODE: Mask = Mask::new(4, 60);
+    pub const ASID: Mask = Mask::new(16, 44);
+    pub const PPN: Mask = Mask::new(44, 0);
+}
 
 #[derive(Debug, IntEnum)]
 #[repr(u8)]
@@ -226,15 +232,15 @@ pub enum SatpMode {
 impl satp {
     #[inline]
     pub fn mode(&self) -> Option<SatpMode> {
-        SatpMode::try_from(self.read_mask(SATP_MODE) as u8).ok()
+        SatpMode::try_from(self.read_mask(satp::MODE) as u8).ok()
     }
 
     #[inline]
     pub unsafe fn set(&self, mode: SatpMode, asid: usize, pa: usize) {
         self.write(
-            (SATP_MODE.fill(mode as usize))
-                | (SATP_ASID.fill(asid))
-                | (SATP_PPN.fill(PA_PPN.get(pa))),
+            (satp::MODE.fill(mode as usize))
+                | (satp::ASID.fill(asid))
+                | (satp::PPN.fill(PA_PPN.get(pa))),
         );
     }
 }
