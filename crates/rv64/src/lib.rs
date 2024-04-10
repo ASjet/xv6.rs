@@ -11,18 +11,19 @@ const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9
 #[derive(Clone, Copy)]
 pub struct Mask {
     mask: usize,
-    width: usize,
-    shift: usize,
+    width: u32,
+    shift: u32,
 }
 
 // TODO: add unit test
 impl Mask {
     #[inline]
     pub const fn new(bit_width: usize, shift: usize) -> Mask {
+        assert!(bit_width + shift <= size_of::<usize>() * 8, "Mask overflow");
         Mask {
             mask: ((1 << bit_width) - 1) << shift,
-            width: bit_width,
-            shift: shift,
+            width: bit_width as u32,
+            shift: shift as u32,
         }
     }
 
@@ -71,13 +72,13 @@ impl Mask {
     /// Get the mask shift
     #[inline]
     pub const fn shift(&self) -> usize {
-        self.shift
+        self.shift as usize
     }
 
     /// Get the mask width
     #[inline]
     pub const fn width(&self) -> usize {
-        self.width
+        self.width as usize
     }
 }
 
@@ -85,10 +86,11 @@ impl core::ops::BitOr for Mask {
     type Output = Mask;
 
     fn bitor(self, rhs: Mask) -> Mask {
+        let right_most = self.shift.min(rhs.shift);
         Mask {
             mask: self.mask | rhs.mask,
-            width: (size_of::<usize>() * 8).max(self.width + rhs.width),
-            shift: self.shift.min(rhs.shift),
+            width: (self.width + self.shift).max(rhs.width + rhs.shift) - right_most,
+            shift: right_most,
         }
     }
 }
