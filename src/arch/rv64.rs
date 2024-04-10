@@ -1,4 +1,4 @@
-use rv64::insn::{s, u, RegisterRW};
+use rv64::reg::{self, RegisterRW};
 
 pub mod def;
 pub mod interrupt;
@@ -8,17 +8,17 @@ pub mod vm;
 
 #[inline]
 pub fn is_intr_on() -> bool {
-    s::sstatus.read().sie()
+    reg::sstatus.read().sie()
 }
 
 #[inline]
 pub fn intr_on() {
-    unsafe { s::sstatus.set_mask(s::SSTATUS_SIE) };
+    unsafe { reg::sstatus.set_sie() };
 }
 
 #[inline]
 pub fn intr_off() {
-    unsafe { s::sstatus.clear_mask(s::SSTATUS_SIE) };
+    unsafe { reg::sstatus.clear_sie() };
 }
 
 #[inline]
@@ -33,5 +33,5 @@ pub fn halt() -> ! {
 /// to a different CPU.
 #[inline]
 pub fn cpuid() -> usize {
-    u::tp.read()
+    reg::tp.read()
 }

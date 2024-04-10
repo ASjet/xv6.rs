@@ -2,7 +2,7 @@ use super::{def, interrupt};
 use crate::arch;
 use crate::proc::{State, CPU};
 use core::{arch::global_asm, panic};
-use rv64::insn::{self, m, s, RegisterRO, RegisterRW};
+use rv64::reg::{self, RegisterRO, RegisterRW};
 
 static mut TIMER_SCRATCH: [[u64; 5]; crate::NCPU] = [[0; 5]; crate::NCPU];
 
@@ -10,7 +10,7 @@ pub unsafe fn init_hart() {
     extern "C" {
         fn kernel_vec();
     }
-    s::stvec.write((kernel_vec as usize).into());
+    reg::stvec.write((kernel_vec as usize).into());
 }
 
 global_asm!(
@@ -67,15 +67,15 @@ pub unsafe fn init_timer_interrupt(hart_id: usize) {
         let scratch = &mut TIMER_SCRATCH[hart_id];
         scratch[3] = mtimecmp_ptr as u64;
         scratch[4] = interval;
-        m::mscratch.write(scratch.as_ptr() as usize);
+        reg::mscratch.write(scratch.as_ptr() as usize);
 
-        m::mtvec.write((timer_vec as usize).into());
+        reg::mtvec.write((timer_vec as usize).into());
 
         // Enable machine-mode interrupts.
-        m::mstatus.set_mask(m::MSTATUS_MIE);
+        reg::mstatus.set_mie();
 
         // Enable machine-mode timer interrupts.
-        m::mie.set_mask(m::MIE_MTIE);
+        reg::mie.set_mtie();
     }
 }
 
@@ -166,11 +166,11 @@ global_asm!(
 
 #[no_mangle]
 extern "C" fn kernel_trap() {
-    let sepc = s::sepc.read();
-    let sstatus = s::sstatus.read();
+    let sepc = reg::sepc.read();
+    let sstatus = reg::sstatus.read();
 
     assert!(
-        sstatus.spp() == insn::PrivilegeLevel::S,
+        sstatus.spp() == rv64::PrivilegeLevel::S,
         "kernel trap: not from supervisor mode"
     );
     assert!(!arch::is_intr_on(), "kernel_trap: interrupts enabled");
@@ -181,8 +181,8 @@ extern "C" fn kernel_trap() {
             panic!(
                 "kernel_trap: scause: {:x?}, sep: {:x?}, stval: {:x?}",
                 scause,
-                s::sepc.read(),
-                s::stval.read()
+                reg::sepc.read(),
+                reg::stval.read()
             );
         }
         Source::Timer => {
@@ -203,7 +203,7 @@ extern "C" fn kernel_trap() {
         }
     }
     unsafe {
-        s::sepc.write(sepc);
-        s::sstatus.write(sstatus);
+        reg::sepc.write(sepc);
+        reg::sstatus.write(sstatus);
     }
 }

@@ -3,8 +3,8 @@ use crate::println;
 use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
 use rv64::{
-    insn::s,
-    vm::{self, PhysAddr, VirtAddr},
+    insn, reg,
+    vm::{PhysAddr, PteFlags, VirtAddr},
 };
 
 macro_rules! addr_reader {
@@ -46,12 +46,14 @@ pub unsafe fn walk(va: usize, alloc: bool) {
 
 pub unsafe fn map_pages(va: usize, size: usize, pa: usize, perm: usize) {
     let alloc = &*addr_of!(ALLOCATOR);
-    (*KPGTBL).map_pages(va, size, pa, perm, alloc).unwrap();
+    (*KPGTBL)
+        .map_pages(va, size, pa, perm.into(), alloc)
+        .unwrap();
 }
 
 pub fn init_mapping() {
-    let perm_rw: usize = (vm::PTE_R | vm::PTE_W).mask();
-    let perm_rx: usize = (vm::PTE_R | vm::PTE_X).mask();
+    let perm_rw = PteFlags::new().set_readable(true).set_writable(true);
+    let perm_rx = PteFlags::new().set_readable(true).set_executable(true);
     unsafe {
         let text_start = text_start(); // Should equal to def::KERNEL_BASE
         let text_end = text_end();
@@ -79,10 +81,10 @@ pub fn init_mapping() {
         let alloc = &*addr_of!(ALLOCATOR);
 
         let mut map_pages_log =
-            |name: &str, va: usize, size: usize, pa: usize, perm: usize, err_msg: &str| {
+            |name: &str, va: usize, size: usize, pa: usize, perm: PteFlags, err_msg: &str| {
                 kpt.map_pages(va, size, pa, perm, alloc).expect(err_msg);
                 println!(
-                    "map 0x{:x} {:?} => {:?} as {}({:03b})",
+                    "map 0x{:x} {:?} => {:?} as {}({:?})",
                     size, pa, va, name, perm
                 );
             };
@@ -182,6 +184,6 @@ pub unsafe fn enable_paging() {
         addr,
         super::cpuid()
     );
-    unsafe { s::satp.set(s::SatpMode::Sv39, 0, addr) }
-    s::sfence_vma();
+    unsafe { reg::satp.set(reg::SatpMode::Sv39, 0, addr) }
+    insn::sfence_vma();
 }

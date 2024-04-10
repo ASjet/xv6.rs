@@ -3,7 +3,7 @@
 use crate::arch::def;
 use crate::io::{BaseIO, ScratchIO};
 use crate::{arch, println};
-use rv64::insn::{s, RegisterRW};
+use rv64::reg::{self, RegisterRW};
 
 const PLIC_BASE: BaseIO<u32> = BaseIO::new(def::PLIC as usize);
 const PLIC_MENABLE: ScratchIO<u32> = ScratchIO::new(def::PLIC as usize + 0x2000, 0x100);
@@ -43,19 +43,19 @@ pub fn plic_complete(hart: usize, irq: u32) {
 pub type IRQ = u32;
 
 pub enum Source {
-    Unknown(s::Scause), // The source is not device
-    Timer,              // Timer interrupt
-    Device(IRQ),        // Device interrupt, the value is the IRQ number
+    Unknown(reg::Scause), // The source is not device
+    Timer,                // Timer interrupt
+    Device(IRQ),          // Device interrupt, the value is the IRQ number
 }
 
 /// Check if it's an external interrupt or software interrupt, and handle it.
 pub fn dev_intr() -> Source {
-    let scause = s::scause.read();
+    let scause = reg::scause.read();
     let hart = arch::cpuid();
 
     if scause.is_interrupt() {
         // Interrupt
-        use s::ScauseInterrupt;
+        use reg::ScauseInterrupt;
 
         let irq = plic_claim(hart);
         match scause.interrupt() {
@@ -68,7 +68,7 @@ pub fn dev_intr() -> Source {
 
                 // Acknowledge the software interrupt by clearing
                 // the SSIP bit in sip.
-                unsafe { s::sip.clear_mask(s::SIP_SSIP) };
+                unsafe { reg::sip.clear_ssip() };
 
                 return Source::Timer;
             }
