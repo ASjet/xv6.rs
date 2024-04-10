@@ -6,7 +6,7 @@ pub mod vm;
 
 use core::mem::size_of;
 
-const BIT_INDEX: &str = "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210";
+const BIT_INDEX: &str = "FEDCBA9876543210";
 
 #[derive(Clone, Copy)]
 pub struct Mask {
@@ -102,9 +102,16 @@ impl core::fmt::Display for Mask {
 }
 
 impl core::fmt::Debug for Mask {
-    // TODO: compress sparse bits.
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "\n{BIT_INDEX}\n{:064b}\n", self.mask)
+        write!(f, "\n {0} {0} {0} {0}\n", BIT_INDEX)?;
+        write!(
+            f,
+            "{:016b} {:16b} {:16b} {:16b}\n",
+            (self.mask >> 48) & 0xFFFF,
+            (self.mask >> 32) & 0xFFFF,
+            (self.mask >> 16) & 0xFFFF,
+            (self.mask) & 0xFFFF,
+        )
     }
 }
 
