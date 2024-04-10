@@ -7,13 +7,8 @@ use core::{
 };
 use int_enum::IntEnum;
 
-mod sv39;
-mod sv48;
-mod sv57;
-
-pub use sv39::Sv39;
-pub use sv48::Sv48;
-pub use sv57::Sv57;
+mod schema;
+pub use schema::*;
 
 /// The offset inside a page frame
 pub const PAGE_OFFSET: Mask = Mask::new(12, 0);
@@ -58,33 +53,6 @@ pub enum PageWidth {
     W1G = PAGE_OFFSET.width() + VPN_WIDTH * 2,
     W39 = PAGE_OFFSET.width() + VPN_WIDTH * 3,
     W48 = PAGE_OFFSET.width() + VPN_WIDTH * 4,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct PageLevel {
-    vpn: Mask,
-    pte_ppn: Mask,
-    pa_ppn: Mask,
-    page_offset: Mask,
-}
-
-impl PageLevel {
-    pub const fn new(vpn: Mask, pte_ppn: Mask, pa_ppn: Mask) -> Self {
-        PageLevel {
-            vpn,
-            pte_ppn,
-            pa_ppn,
-            page_offset: Mask::new(pa_ppn.shift(), 0),
-        }
-    }
-}
-
-pub trait PagingSchema {
-    /// The maximum virtual address of the schema
-    fn max_va() -> VirtAddr;
-
-    /// The mask for page address
-    fn page_levels() -> &'static [PageLevel];
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

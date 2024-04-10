@@ -1,4 +1,5 @@
-use super::{PageLevel, PagingSchema, VirtAddr, PAGE_OFFSET, PTE_FLAGS, VPN_WIDTH};
+use super::{PageLevel, PagingSchema};
+use crate::vm::{VirtAddr, PAGE_OFFSET, PTE_FLAGS, VPN_WIDTH};
 use crate::Mask;
 
 const VA_WIDTH: usize = 48;
@@ -36,7 +37,7 @@ impl PagingSchema for Sv48 {
     }
 
     #[inline]
-    fn page_levels() -> &'static [super::PageLevel] {
+    fn page_levels() -> &'static [PageLevel] {
         &PAGE_LEVELS
     }
 }
