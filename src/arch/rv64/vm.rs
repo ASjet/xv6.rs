@@ -3,8 +3,7 @@ use crate::println;
 use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
 use rv64::{
-    insn,
-    reg::s,
+    insn, reg,
     vm::{self, PhysAddr, VirtAddr},
 };
 
@@ -197,6 +196,6 @@ pub unsafe fn enable_paging() {
         addr,
         super::cpuid()
     );
-    unsafe { s::satp.set(s::SatpMode::Sv39, 0, addr) }
+    unsafe { reg::satp.set(reg::SatpMode::Sv39, 0, addr) }
     insn::sfence_vma();
 }

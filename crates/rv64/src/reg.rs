@@ -1,13 +1,17 @@
 use crate::Mask;
 
 /// Machine Privileged Level
-pub mod m;
+mod m;
 
 /// Supervisor Privileged Level
-pub mod s;
+mod s;
 
 /// Unprivileged Level
-pub mod u;
+mod u;
+
+pub use m::*;
+pub use s::*;
+pub use u::*;
 
 pub trait RegisterRW<T: From<usize> + Into<usize>> {
     /// Read the value of the register.

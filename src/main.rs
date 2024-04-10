@@ -63,7 +63,7 @@ use core::sync::atomic::Ordering;
 use riscv_rt::entry;
 use rv64::insn;
 use rv64::read_linker_symbol;
-use rv64::reg::{m, s, u, RegisterRO, RegisterRW};
+use rv64::reg::{self, RegisterRO, RegisterRW};
 use xv6::arch;
 use xv6::arch::interrupt;
 use xv6::arch::trap;
@@ -92,29 +92,29 @@ fn panic(info: &PanicInfo) -> ! {
 
 #[entry]
 fn start() -> ! {
-    let hart_id = m::mhartid.read();
+    let hart_id = reg::mhartid.read();
     unsafe {
         // Disable paging for now.
-        s::satp.set(s::SatpMode::Bare, 0, 0);
+        reg::satp.set(reg::SatpMode::Bare, 0, 0);
 
         // Delegate all interrupts and exceptions to supervisor mode.
-        m::medeleg.write(0xffff);
-        m::mideleg.write(0xffff);
-        s::sie.set_mask(s::sie::SEIE | s::sie::STIE | s::sie::SSIE);
+        reg::medeleg.write(0xffff);
+        reg::mideleg.write(0xffff);
+        reg::sie.set_mask(reg::sie::SEIE | reg::sie::STIE | reg::sie::SSIE);
 
         // Configure Physical Memory Protection to give supervisor mode
         // access to all of physical memory.
-        m::pmpaddr0.write(0x3fffffffffffff);
-        m::pmpcfg0.write(0xf);
+        reg::pmpaddr0.write(0x3fffffffffffff);
+        reg::pmpcfg0.write(0xf);
 
         arch::trap::init_timer_interrupt(hart_id);
 
         // set M Previous Privilege mode to Supervisor, for mret.
-        m::mstatus.w_mpp(rv64::PrivilegeLevel::S);
+        reg::mstatus.w_mpp(rv64::PrivilegeLevel::S);
         // set M Exception Program Counter to main, for mret.
-        m::mepc.write(main as usize);
+        reg::mepc.write(main as usize);
         // Keep each CPU's hartid in its tp register, for cpuid().
-        u::tp.write(hart_id);
+        reg::tp.write(hart_id);
 
         insn::mret();
         unreachable_unchecked();
