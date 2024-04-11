@@ -84,7 +84,7 @@ pub fn init_mapping() {
             |name: &str, va: usize, size: usize, pa: usize, perm: PteFlags, err_msg: &str| {
                 kpt.map_pages(va, size, pa, perm, alloc).expect(err_msg);
                 println!(
-                    "map 0x{:x} {:?} => {:?} as {}({:?})",
+                    "map 0x{:08x} 0x{:010x} => 0x{:010x} as {:12}({:?})",
                     size, pa, va, name, perm
                 );
             };
