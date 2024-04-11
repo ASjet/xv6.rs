@@ -1,5 +1,5 @@
 use super::{PhysAddr, PAGE_OFFSET, PA_PPN};
-use crate::Mask;
+use crate::BitFlag;
 use core::fmt::Debug;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -7,34 +7,34 @@ use core::fmt::Debug;
 pub struct PTE(usize);
 
 impl PTE {
-    pub const PPN: Mask = Mask::new(44, 10);
+    pub const PPN: BitFlag = BitFlag::new(44, 10);
 
-    pub const FLAGS: Mask = Mask::new(10, 0);
-    pub const V: Mask = Mask::new(1, 0);
-    pub const R: Mask = Mask::new(1, 1);
-    pub const W: Mask = Mask::new(1, 2);
-    pub const X: Mask = Mask::new(1, 3);
-    pub const XWR: Mask = Mask::new(3, 1);
-    pub const U: Mask = Mask::new(1, 4);
-    pub const G: Mask = Mask::new(1, 5);
-    pub const A: Mask = Mask::new(1, 6);
-    pub const D: Mask = Mask::new(1, 7);
-    pub const RSW: Mask = Mask::new(2, 8);
+    pub const FLAGS: BitFlag = BitFlag::new(10, 0);
+    pub const V: BitFlag = BitFlag::new(1, 0);
+    pub const R: BitFlag = BitFlag::new(1, 1);
+    pub const W: BitFlag = BitFlag::new(1, 2);
+    pub const X: BitFlag = BitFlag::new(1, 3);
+    pub const XWR: BitFlag = BitFlag::new(3, 1);
+    pub const U: BitFlag = BitFlag::new(1, 4);
+    pub const G: BitFlag = BitFlag::new(1, 5);
+    pub const A: BitFlag = BitFlag::new(1, 6);
+    pub const D: BitFlag = BitFlag::new(1, 7);
+    pub const RSW: BitFlag = BitFlag::new(2, 8);
 
     /// Reserved for future standard use and, until their use is defined by some
     /// standard extension, must be zeroed by software for forward compatibility.
     /// If any of these bits are set, a page-fault exception is raised.
-    pub const RESERVED: Mask = Mask::new(7, 54);
+    pub const RESERVED: BitFlag = BitFlag::new(7, 54);
 
     /// Reserved for use by the Svpbmt extension, If Svpbmt is not implemented,
     /// these bits remain reserved and must be zeroed by software for forward compatibility,
     /// or else a page-fault exception is raised.
-    pub const PBMT: Mask = Mask::new(2, 61);
+    pub const PBMT: BitFlag = BitFlag::new(2, 61);
 
     /// Reserved for use by the Svnapot extension, if Svnapot is not implemented,
     /// this bit remain reserved must be zeroed by software for forward compatibility,
     /// or else a page-fault exception is raised.
-    pub const N: Mask = Mask::new(1, 63);
+    pub const N: BitFlag = BitFlag::new(1, 63);
 
     /// Create a PTE points to `pa`, use `new` instead setters
     #[inline]
@@ -228,6 +228,6 @@ impl From<usize> for PteFlags {
 impl From<PteFlags> for usize {
     #[inline]
     fn from(value: PteFlags) -> Self {
-        PTE::FLAGS.read_raw(value.0)
+        PTE::FLAGS.mask(value.0)
     }
 }

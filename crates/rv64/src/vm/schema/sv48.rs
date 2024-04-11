@@ -1,30 +1,30 @@
 use super::{PageLevel, PagingSchema};
 use crate::vm::{VirtAddr, PAGE_OFFSET, PTE, VPN_WIDTH};
-use crate::Mask;
+use crate::BitFlag;
 
 const VA_WIDTH: usize = 48;
 const MAX_VA: VirtAddr = VirtAddr((1 << VA_WIDTH) - 1);
 
 const PAGE_LEVELS: [PageLevel; 4] = [
     PageLevel::new(
-        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 0),
-        Mask::new(17 + 9 + 9 + 9, PTE::FLAGS.width()),
-        Mask::new(17 + 9 + 9 + 9, PAGE_OFFSET.width()),
+        BitFlag::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 0),
+        BitFlag::new(17 + 9 + 9 + 9, PTE::FLAGS.width()),
+        BitFlag::new(17 + 9 + 9 + 9, PAGE_OFFSET.width()),
     ),
     PageLevel::new(
-        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 1),
-        Mask::new(17 + 9 + 9, PTE::FLAGS.width() + 9),
-        Mask::new(17 + 9 + 9, PAGE_OFFSET.width() + 9),
+        BitFlag::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 1),
+        BitFlag::new(17 + 9 + 9, PTE::FLAGS.width() + 9),
+        BitFlag::new(17 + 9 + 9, PAGE_OFFSET.width() + 9),
     ),
     PageLevel::new(
-        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 2),
-        Mask::new(17 + 9, PTE::FLAGS.width() + 9 + 9),
-        Mask::new(17 + 9, PAGE_OFFSET.width() + 9 + 9),
+        BitFlag::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 2),
+        BitFlag::new(17 + 9, PTE::FLAGS.width() + 9 + 9),
+        BitFlag::new(17 + 9, PAGE_OFFSET.width() + 9 + 9),
     ),
     PageLevel::new(
-        Mask::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 3),
-        Mask::new(17, PTE::FLAGS.width() + 9 + 9 + 9),
-        Mask::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
+        BitFlag::new(VPN_WIDTH, PAGE_OFFSET.width() + VPN_WIDTH * 3),
+        BitFlag::new(17, PTE::FLAGS.width() + 9 + 9 + 9),
+        BitFlag::new(17, PAGE_OFFSET.width() + 9 + 9 + 9),
     ),
 ];
 

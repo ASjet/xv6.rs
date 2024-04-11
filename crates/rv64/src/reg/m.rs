@@ -1,5 +1,5 @@
 use super::RegisterRW;
-use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, Mask, PrivilegeLevel};
+use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, BitFlag, PrivilegeLevel};
 
 /*            Machine Information Register            */
 
@@ -35,22 +35,22 @@ csr_reg_rw!(
     mstatus
 );
 impl mstatus {
-    pub const TSR: Mask = Mask::new(1, 22);
-    pub const TW: Mask = Mask::new(1, 21);
-    pub const TVM: Mask = Mask::new(1, 20);
-    pub const MXR: Mask = Mask::new(1, 19);
-    pub const SUM: Mask = Mask::new(1, 18);
-    pub const MPRV: Mask = Mask::new(1, 17);
-    pub const XS: Mask = Mask::new(2, 15);
-    pub const FS: Mask = Mask::new(2, 13);
-    pub const MPP: Mask = Mask::new(2, 11); // Machine-mode Previous Privilege
-    pub const VS: Mask = Mask::new(2, 9);
-    pub const SPP: Mask = Mask::new(1, 8); // Supervisor Previous Privilege
-    pub const MPIE: Mask = Mask::new(1, 7);
-    pub const UBE: Mask = Mask::new(1, 6);
-    pub const SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
-    pub const MIE: Mask = Mask::new(1, 3); // Machine-mode Interrupt Enable
-    pub const SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+    pub const TSR: BitFlag = BitFlag::new(1, 22);
+    pub const TW: BitFlag = BitFlag::new(1, 21);
+    pub const TVM: BitFlag = BitFlag::new(1, 20);
+    pub const MXR: BitFlag = BitFlag::new(1, 19);
+    pub const SUM: BitFlag = BitFlag::new(1, 18);
+    pub const MPRV: BitFlag = BitFlag::new(1, 17);
+    pub const XS: BitFlag = BitFlag::new(2, 15);
+    pub const FS: BitFlag = BitFlag::new(2, 13);
+    pub const MPP: BitFlag = BitFlag::new(2, 11); // Machine-mode Previous Privilege
+    pub const VS: BitFlag = BitFlag::new(2, 9);
+    pub const SPP: BitFlag = BitFlag::new(1, 8); // Supervisor Previous Privilege
+    pub const MPIE: BitFlag = BitFlag::new(1, 7);
+    pub const UBE: BitFlag = BitFlag::new(1, 6);
+    pub const SPIE: BitFlag = BitFlag::new(1, 5); // Supervisor Previous Interrupt Enable
+    pub const MIE: BitFlag = BitFlag::new(1, 3); // Machine-mode Interrupt Enable
+    pub const SIE: BitFlag = BitFlag::new(1, 1); // Supervisor Interrupt Enable
 
     /// Read mstatus.MPP
     #[inline]
@@ -86,11 +86,11 @@ csr_reg_rw!(
     mie
 );
 impl mie {
-    pub const SEIE: Mask = Mask::new(1, 11); // external
-    pub const MTIE: Mask = Mask::new(1, 9); // timer
-    pub const STIE: Mask = Mask::new(1, 7); // timer
-    pub const MSIE: Mask = Mask::new(1, 5); // software
-    pub const SSIE: Mask = Mask::new(1, 3); // software
+    pub const SEIE: BitFlag = BitFlag::new(1, 11); // external
+    pub const MTIE: BitFlag = BitFlag::new(1, 9); // timer
+    pub const STIE: BitFlag = BitFlag::new(1, 7); // timer
+    pub const MSIE: BitFlag = BitFlag::new(1, 5); // software
+    pub const SSIE: BitFlag = BitFlag::new(1, 3); // software
 }
 csr_set_clear!(mie, set_mtie, clear_mtie, mie::MTIE);
 csr_set_clear!(mie, set_msoft, clear_msoft, mie::MSIE);
@@ -159,12 +159,12 @@ csr_reg_rw!(
     mip, Mip
 );
 impl mip {
-    pub const MEIP: Mask = Mask::new(1, 11); // external
-    pub const SEIP: Mask = Mask::new(1, 9); // external
-    pub const MTIP: Mask = Mask::new(1, 7); // timer
-    pub const STIP: Mask = Mask::new(1, 5); // timer
-    pub const MSIP: Mask = Mask::new(1, 3); // software
-    pub const SSIP: Mask = Mask::new(1, 1); // software
+    pub const MEIP: BitFlag = BitFlag::new(1, 11); // external
+    pub const SEIP: BitFlag = BitFlag::new(1, 9); // external
+    pub const MTIP: BitFlag = BitFlag::new(1, 7); // timer
+    pub const STIP: BitFlag = BitFlag::new(1, 5); // timer
+    pub const MSIP: BitFlag = BitFlag::new(1, 3); // software
+    pub const SSIP: BitFlag = BitFlag::new(1, 1); // software
 }
 impl Mip {
     #[inline]

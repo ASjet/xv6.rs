@@ -1,4 +1,4 @@
-use crate::Mask;
+use crate::BitFlag;
 
 /// Machine Privileged Level
 mod m;
@@ -22,25 +22,25 @@ pub trait RegisterRW<T: From<usize> + Into<usize>> {
 
     /// Read the value of the register at the mask.
     #[inline]
-    fn read_mask(&self, mask: Mask) -> usize {
+    fn read_mask(&self, mask: BitFlag) -> usize {
         mask.read(self.read().into())
     }
 
     /// Write the value of the register at the mask.
     #[inline]
-    unsafe fn write_mask(&self, mask: Mask, value: usize) {
+    unsafe fn write_mask(&self, mask: BitFlag, value: usize) {
         self.write(mask.write(self.read().into(), value).into())
     }
 
     /// Set all bits at the mask in the register.
     #[inline]
-    unsafe fn set_mask(&self, mask: Mask) {
+    unsafe fn set_mask(&self, mask: BitFlag) {
         self.write(mask.set(self.read().into()).into())
     }
 
     /// Clear all bits at the mask in the register.
     #[inline]
-    unsafe fn clear_mask(&self, mask: Mask) {
+    unsafe fn clear_mask(&self, mask: BitFlag) {
         self.write(mask.clear(self.read().into()).into())
     }
 }
@@ -51,7 +51,7 @@ pub trait RegisterRO<T: From<usize> + Into<usize>> {
 
     /// Read the value of the register at the mask.
     #[inline]
-    fn read_mask(&self, mask: Mask) -> T {
+    fn read_mask(&self, mask: BitFlag) -> T {
         mask.read(self.read().into()).into()
     }
 }

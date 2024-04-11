@@ -7,23 +7,23 @@ pub use sv48::Sv48;
 pub use sv57::Sv57;
 
 use super::VirtAddr;
-use crate::Mask;
+use crate::BitFlag;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PageLevel {
-    pub vpn: Mask,
-    pub pte_ppn: Mask,
-    pub pa_ppn: Mask,
-    pub page_offset: Mask,
+    pub vpn: BitFlag,
+    pub pte_ppn: BitFlag,
+    pub pa_ppn: BitFlag,
+    pub page_offset: BitFlag,
 }
 
 impl PageLevel {
-    pub const fn new(vpn: Mask, pte_ppn: Mask, pa_ppn: Mask) -> Self {
+    pub const fn new(vpn: BitFlag, pte_ppn: BitFlag, pa_ppn: BitFlag) -> Self {
         PageLevel {
             vpn,
             pte_ppn,
             pa_ppn,
-            page_offset: Mask::new(pa_ppn.shift(), 0),
+            page_offset: BitFlag::new(pa_ppn.shift(), 0),
         }
     }
 }

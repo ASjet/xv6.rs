@@ -1,4 +1,4 @@
-use crate::Mask;
+use crate::BitFlag;
 use core::{
     fmt::Debug,
     marker::PhantomData,
@@ -14,9 +14,9 @@ pub use pte::*;
 pub use schema::*;
 
 /// The offset inside a page frame
-pub const PAGE_OFFSET: Mask = Mask::new(12, 0);
+pub const PAGE_OFFSET: BitFlag = BitFlag::new(12, 0);
 pub const PAGE_SIZE: usize = 1 << PAGE_OFFSET.width();
-pub const PA_PPN: Mask = Mask::new(44, PAGE_OFFSET.width());
+pub const PA_PPN: BitFlag = BitFlag::new(44, PAGE_OFFSET.width());
 pub const VPN_WIDTH: usize = PAGE_OFFSET.width() - 3; // sizeof::<usize>() == 2^3
 
 #[derive(Clone, Copy, Debug, IntEnum, PartialEq, Eq)]

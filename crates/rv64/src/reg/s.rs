@@ -1,5 +1,5 @@
 use super::RegisterRW;
-use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, vm::PA_PPN, Mask, PrivilegeLevel};
+use crate::{csr_reg_ro, csr_reg_rw, csr_set_clear, vm::PA_PPN, BitFlag, PrivilegeLevel};
 use int_enum::IntEnum;
 
 /*            Supervisor Trap Setup            */
@@ -9,17 +9,17 @@ csr_reg_rw!(
     sstatus, Sstatus
 );
 impl sstatus {
-    pub const SD: Mask = Mask::new(1, 63);
-    pub const UXL: Mask = Mask::new(2, 32);
-    pub const MXR: Mask = Mask::new(1, 19);
-    pub const SUM: Mask = Mask::new(1, 18);
-    pub const XS: Mask = Mask::new(2, 15);
-    pub const FS: Mask = Mask::new(2, 13);
-    pub const VS: Mask = Mask::new(2, 9);
-    pub const SPP: Mask = Mask::new(1, 8); // Previous mode, 1=Supervisor, 0=User
-    pub const UBE: Mask = Mask::new(1, 6);
-    pub const SPIE: Mask = Mask::new(1, 5); // Supervisor Previous Interrupt Enable
-    pub const SIE: Mask = Mask::new(1, 1); // Supervisor Interrupt Enable
+    pub const SD: BitFlag = BitFlag::new(1, 63);
+    pub const UXL: BitFlag = BitFlag::new(2, 32);
+    pub const MXR: BitFlag = BitFlag::new(1, 19);
+    pub const SUM: BitFlag = BitFlag::new(1, 18);
+    pub const XS: BitFlag = BitFlag::new(2, 15);
+    pub const FS: BitFlag = BitFlag::new(2, 13);
+    pub const VS: BitFlag = BitFlag::new(2, 9);
+    pub const SPP: BitFlag = BitFlag::new(1, 8); // Previous mode, 1=Supervisor, 0=User
+    pub const UBE: BitFlag = BitFlag::new(1, 6);
+    pub const SPIE: BitFlag = BitFlag::new(1, 5); // Supervisor Previous Interrupt Enable
+    pub const SIE: BitFlag = BitFlag::new(1, 1); // Supervisor Interrupt Enable
 }
 csr_set_clear!(sstatus, set_sie, clear_sie, sstatus::SIE);
 impl Sstatus {
@@ -32,7 +32,7 @@ impl Sstatus {
     /// Read `sstatus.SIE`
     #[inline]
     pub fn sie(&self) -> bool {
-        sstatus::SIE.read_raw(self.0) == 1
+        sstatus::SIE.mask(self.0) == 1
     }
 }
 
@@ -41,9 +41,9 @@ csr_reg_rw!(
     sie
 );
 impl sie {
-    pub const SEIE: Mask = Mask::new(1, 9); // external
-    pub const STIE: Mask = Mask::new(1, 5); // timer
-    pub const SSIE: Mask = Mask::new(1, 1); // software
+    pub const SEIE: BitFlag = BitFlag::new(1, 9); // external
+    pub const STIE: BitFlag = BitFlag::new(1, 5); // timer
+    pub const SSIE: BitFlag = BitFlag::new(1, 1); // software
 }
 
 csr_reg_rw!(
@@ -104,8 +104,8 @@ csr_reg_rw!(
     scause, Scause
 );
 impl scause {
-    pub const INTERRUPT: Mask = Mask::new(1, 63); // 1: interrupt, 0: exception
-    pub const EXCEPTION: Mask = Mask::new(63, 0);
+    pub const INTERRUPT: BitFlag = BitFlag::new(1, 63); // 1: interrupt, 0: exception
+    pub const EXCEPTION: BitFlag = BitFlag::new(63, 0);
 }
 #[derive(Debug)]
 pub enum ScauseInterrupt {
@@ -201,9 +201,9 @@ csr_reg_rw!(
     sip
 );
 impl sip {
-    pub const SEIP: Mask = Mask::new(1, 9); // external
-    pub const STIP: Mask = Mask::new(1, 5); // timer
-    pub const SSIP: Mask = Mask::new(1, 1); // software
+    pub const SEIP: BitFlag = BitFlag::new(1, 9); // external
+    pub const STIP: BitFlag = BitFlag::new(1, 5); // timer
+    pub const SSIP: BitFlag = BitFlag::new(1, 1); // software
 }
 csr_set_clear!(sip, set_ssip, clear_ssip, sip::SSIP);
 
@@ -214,9 +214,9 @@ csr_reg_rw!(
     satp
 );
 impl satp {
-    pub const MODE: Mask = Mask::new(4, 60);
-    pub const ASID: Mask = Mask::new(16, 44);
-    pub const PPN: Mask = Mask::new(44, 0);
+    pub const MODE: BitFlag = BitFlag::new(4, 60);
+    pub const ASID: BitFlag = BitFlag::new(16, 44);
+    pub const PPN: BitFlag = BitFlag::new(44, 0);
 }
 
 #[derive(Debug, IntEnum)]
