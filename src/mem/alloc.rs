@@ -146,7 +146,7 @@ impl LinkListAllocator {
     }
 }
 
-impl PageAllocator for LinkListAllocator {
+unsafe impl PageAllocator for LinkListAllocator {
     unsafe fn palloc(&self, page_width: PageWidth) -> Option<PhysAddr> {
         if page_width != PageWidth::W4K {
             return None;

@@ -28,7 +28,7 @@ impl PageLevel {
     }
 }
 
-pub trait PagingSchema {
+pub unsafe trait PagingSchema {
     /// The maximum virtual address of the schema
     fn max_va() -> VirtAddr;
 

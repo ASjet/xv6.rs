@@ -30,7 +30,7 @@ const PAGE_LEVELS: [PageLevel; 4] = [
 
 pub struct Sv48;
 
-impl PagingSchema for Sv48 {
+unsafe impl PagingSchema for Sv48 {
     #[inline]
     fn max_va() -> VirtAddr {
         MAX_VA

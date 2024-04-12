@@ -230,7 +230,7 @@ impl From<VirtAddr> for usize {
 }
 
 /// The PageAllocator need interior mutable it's states
-pub trait PageAllocator {
+pub unsafe trait PageAllocator {
     unsafe fn palloc(&self, page_width: PageWidth) -> Option<PhysAddr>;
     unsafe fn pfree(&self, page: PhysAddr);
 }
