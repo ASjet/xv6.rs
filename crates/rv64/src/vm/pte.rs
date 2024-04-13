@@ -42,6 +42,12 @@ impl PTE {
         PTE(PTE::PPN.make(PA_PPN.read(pa.into())) | usize::from(flags))
     }
 
+    /// Create an invalid PTE
+    #[inline]
+    pub const fn new_invalid() -> PTE {
+        PTE(0)
+    }
+
     /// Physical address that the PTE points to
     #[inline]
     pub fn addr(&self) -> PhysAddr {
@@ -135,6 +141,12 @@ impl PteFlags {
     #[inline]
     pub const fn xwr(&self) -> usize {
         PTE::XWR.read(self.0)
+    }
+
+    /// It's a shortcut for PteFlags::xwr() != 0
+    #[inline]
+    pub const fn is_leaf(&self) -> bool {
+        self.xwr() != 0
     }
 
     #[inline]
