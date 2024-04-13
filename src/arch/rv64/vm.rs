@@ -58,6 +58,12 @@ pub unsafe fn map_pages(
     (*KPGTBL).map_pages(va, size, pa, perm.into(), alloc)
 }
 
+pub unsafe fn free_pagetable(tbl: *mut PageTable) {
+    let alloc = &*addr_of!(ALLOCATOR);
+    (*tbl).free_walk(alloc);
+    ALLOCATOR.kfree(tbl);
+}
+
 pub fn init_mapping() {
     let perm_rw = PteFlags::new().set_readable(true).set_writable(true);
     let perm_rx = PteFlags::new().set_readable(true).set_executable(true);
