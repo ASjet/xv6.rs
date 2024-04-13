@@ -1,11 +1,9 @@
 use super::def;
-use crate::println;
-use crate::{mem::alloc::ALLOCATOR, proc};
+use crate::{mem::alloc::ALLOCATOR, println, proc};
 use core::ptr::addr_of;
-use rv64::vm::{PageLevel, PageTableError, PTE};
 use rv64::{
     insn, reg,
-    vm::{PhysAddr, PteFlags, VirtAddr},
+    vm::{PageLevel, PageTableError, PhysAddr, PteFlags, VirtAddr, PTE},
 };
 
 macro_rules! addr_reader {
