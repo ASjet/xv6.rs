@@ -94,7 +94,7 @@ impl<'a, T: 'a> MutexGuard<'a, T> {
 
     pub fn holding(&self) -> bool {
         assert!(!arch::is_intr_on(), "interrupt enabled");
-        unsafe { self.mutex.holding() }
+        self.mutex.holding()
     }
 }
 

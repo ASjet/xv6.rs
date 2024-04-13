@@ -165,13 +165,12 @@ impl Proc {
 
         p.sync.lock().pid = Some(alloc_pid());
 
-        p.trapframe = unsafe {
-            alloc::kalloc().or_else(|| {
+        p.trapframe = alloc::kalloc(false)
+            .or_else(|| {
                 p.free();
                 None
-            })
-        }?
-        .as_mut_ptr::<arch::trampoline::TrapFrame>();
+            })?
+            .as_mut_ptr::<arch::trampoline::TrapFrame>();
 
         p.pagetable = p.alloc_pagetable().or_else(|| {
             p.free();

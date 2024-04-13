@@ -18,8 +18,8 @@ pub fn free_pages() -> usize {
 }
 
 #[inline]
-pub unsafe fn kalloc(zeroed: bool) -> Option<PhysAddr> {
-    ALLOCATOR.kalloc(zeroed)
+pub fn kalloc(zeroed: bool) -> Option<PhysAddr> {
+    unsafe { ALLOCATOR.kalloc(zeroed) }
 }
 
 #[inline]
