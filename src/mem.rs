@@ -1,4 +1,5 @@
 pub mod alloc;
+pub mod uvm;
 
 pub fn init() {
     alloc::init_heap();

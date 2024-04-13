@@ -1,10 +1,9 @@
 use super::def;
-use crate::println;
-use crate::{mem::alloc::ALLOCATOR, proc};
+use crate::{mem::alloc::ALLOCATOR, println, proc};
 use core::ptr::addr_of;
 use rv64::{
     insn, reg,
-    vm::{PhysAddr, PteFlags, VirtAddr},
+    vm::{PageLevel, PageTableError, PhysAddr, PteFlags, VirtAddr, PTE},
 };
 
 macro_rules! addr_reader {
@@ -35,20 +34,32 @@ pub fn virt_to_phys(va: usize) -> Option<usize> {
     unsafe { (*KPGTBL).virt_to_phys(va).ok().map(usize::from) }
 }
 
-pub unsafe fn walk(va: usize, alloc: bool) {
+pub unsafe fn walk(
+    va: usize,
+    alloc: bool,
+) -> Result<(&'static PageLevel, &'static mut PTE), PageTableError> {
     let alloc = if alloc {
         Some(&*addr_of!(ALLOCATOR))
     } else {
         None
     };
-    unsafe { (*KPGTBL).walk(va, 0, alloc).unwrap() };
+    unsafe { (*KPGTBL).walk(va, 0, alloc) }
 }
 
-pub unsafe fn map_pages(va: usize, size: usize, pa: usize, perm: usize) {
+pub unsafe fn map_pages(
+    va: usize,
+    size: usize,
+    pa: usize,
+    perm: usize,
+) -> Result<(), PageTableError> {
     let alloc = &*addr_of!(ALLOCATOR);
-    (*KPGTBL)
-        .map_pages(va, size, pa, perm.into(), alloc)
-        .unwrap();
+    (*KPGTBL).map_pages(va, size, pa, perm.into(), alloc)
+}
+
+pub unsafe fn free_pagetable(tbl: *mut PageTable) {
+    let alloc = &*addr_of!(ALLOCATOR);
+    (*tbl).free_walk(alloc);
+    ALLOCATOR.kfree(tbl);
 }
 
 pub fn init_mapping() {
@@ -73,8 +84,7 @@ pub fn init_mapping() {
             PhysAddr::from(stack_start),
         );
 
-        let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
-        page.memset(0x0usize, ALLOCATOR.page_size());
+        let page = ALLOCATOR.kalloc(true).expect("kalloc kpgtbl failed");
         let kpt = page.as_mut::<PageTable>().unwrap();
 
         // Erase the static attribute from ALLOCATOR
@@ -158,7 +168,7 @@ pub fn init_mapping() {
                 "kstack",
                 va,
                 def::PG_SIZE,
-                ALLOCATOR.kalloc().expect("kalloc stack failed").into(),
+                ALLOCATOR.kalloc(true).expect("kalloc stack failed").into(),
                 perm_rw,
                 "map stack failed",
             );

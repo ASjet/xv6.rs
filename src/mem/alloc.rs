@@ -18,8 +18,8 @@ pub fn free_pages() -> usize {
 }
 
 #[inline]
-pub unsafe fn kalloc() -> Option<PhysAddr> {
-    ALLOCATOR.kalloc()
+pub fn kalloc(zeroed: bool) -> Option<PhysAddr> {
+    unsafe { ALLOCATOR.kalloc(zeroed) }
 }
 
 #[inline]
@@ -103,7 +103,7 @@ impl LinkListAllocator {
     /// Allocate one 4096-byte page of physical memory.
     /// Returns a pointer that the kernel can use.
     /// Returns 0 if the memory cannot be allocated.
-    pub unsafe fn kalloc(&self) -> Option<PhysAddr> {
+    pub unsafe fn kalloc(&self, zeroed: bool) -> Option<PhysAddr> {
         let mut free_list = self.free_list.lock();
         let page = *free_list;
         if page.is_null() {
@@ -113,7 +113,15 @@ impl LinkListAllocator {
         *self.free_pages.lock() -= 1;
 
         let page = PhysAddr::from(page as usize);
-        page.memset(0xAAAA_AAAA_AAAA_AAAA_usize, self.page_size);
+        page.memset(
+            if zeroed {
+                0usize
+            } else {
+                0xAAAA_AAAA_AAAA_AAAA_usize
+            },
+            self.page_size,
+        );
+
         Some(page)
     }
 
@@ -151,7 +159,7 @@ unsafe impl PageAllocator for LinkListAllocator {
         if page_width != PageWidth::W4K {
             return None;
         }
-        self.kalloc()
+        self.kalloc(true)
     }
 
     unsafe fn pfree(&self, page: PhysAddr) {

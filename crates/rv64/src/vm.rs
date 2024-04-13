@@ -366,6 +366,24 @@ impl<T: PagingSchema + 'static> PageTable<T> {
         Ok(())
     }
 
+    /// Recursively free page-table pages. The `PageTable` itself need to be freed by the caller.
+    /// Safety: All leaf mappings must already have been removed.
+    pub unsafe fn free_walk(&mut self, allocator: &(impl PageAllocator + Sync + Send)) {
+        for pte in self.table.iter_mut() {
+            let flags = pte.flags();
+            if flags.valid() {
+                assert!(!flags.is_leaf());
+
+                let next_ptl = pte.addr();
+                unsafe { next_ptl.as_mut::<Self>() }
+                    .unwrap()
+                    .free_walk(allocator);
+                allocator.pfree(next_ptl);
+                *pte = PTE::new_invalid();
+            }
+        }
+    }
+
     pub fn dump(
         &self,
         f: &mut core::fmt::Formatter<'_>,
