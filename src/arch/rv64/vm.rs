@@ -2,6 +2,7 @@ use super::def;
 use crate::println;
 use crate::{mem::alloc::ALLOCATOR, proc};
 use core::ptr::addr_of;
+use rv64::vm::{PageLevel, PageTableError, PTE};
 use rv64::{
     insn, reg,
     vm::{PhysAddr, PteFlags, VirtAddr},
@@ -35,20 +36,26 @@ pub fn virt_to_phys(va: usize) -> Option<usize> {
     unsafe { (*KPGTBL).virt_to_phys(va).ok().map(usize::from) }
 }
 
-pub unsafe fn walk(va: usize, alloc: bool) {
+pub unsafe fn walk(
+    va: usize,
+    alloc: bool,
+) -> Result<(&'static PageLevel, &'static mut PTE), PageTableError> {
     let alloc = if alloc {
         Some(&*addr_of!(ALLOCATOR))
     } else {
         None
     };
-    unsafe { (*KPGTBL).walk(va, 0, alloc).unwrap() };
+    unsafe { (*KPGTBL).walk(va, 0, alloc) }
 }
 
-pub unsafe fn map_pages(va: usize, size: usize, pa: usize, perm: usize) {
+pub unsafe fn map_pages(
+    va: usize,
+    size: usize,
+    pa: usize,
+    perm: usize,
+) -> Result<(), PageTableError> {
     let alloc = &*addr_of!(ALLOCATOR);
-    (*KPGTBL)
-        .map_pages(va, size, pa, perm.into(), alloc)
-        .unwrap();
+    (*KPGTBL).map_pages(va, size, pa, perm.into(), alloc)
 }
 
 pub fn init_mapping() {
