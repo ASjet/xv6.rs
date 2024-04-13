@@ -11,7 +11,7 @@ pub struct UserPageTable(*mut PageTable);
 
 impl UserPageTable {
     pub fn new() -> Option<UserPageTable> {
-        let page = unsafe { kalloc(true) }?;
+        let page = kalloc(true)?;
         Some(UserPageTable(page.as_mut_ptr::<PageTable>()))
     }
 
@@ -31,7 +31,7 @@ impl UserPageTable {
 
         let oldsz = pgroundup(oldsz);
         for a in (oldsz..newsz).step_by(pg_size) {
-            if let Some(page) = unsafe { kalloc(true) } {
+            if let Some(page) = kalloc(true) {
                 unsafe {
                     if map_pages(a, pg_size, page.into(), perm.into()).is_err() {
                         kfree(page);
@@ -94,4 +94,17 @@ impl UserPageTable {
         }
         free_pagetable(self.0);
     }
+
+    /// mark a PTE invalid for user access.
+    /// used by exec for the user stack guard page.
+    /// Safety: va must be a valid virtual address.
+    pub unsafe fn clear(&mut self, va: usize) {
+        let (_, pte) =
+            unsafe { (*self.0).walk(va, 0, None::<&LinkListAllocator>) }.expect("uvmclear: walk");
+        *pte = PTE::new(pte.addr(), pte.flags().set_user(false));
+    }
+
+    // TODO: copyin, copyout, copyinstr
 }
+
+// TODO: impl Copy for UserPageTable
