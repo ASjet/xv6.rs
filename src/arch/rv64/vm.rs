@@ -86,8 +86,7 @@ pub fn init_mapping() {
             PhysAddr::from(stack_start),
         );
 
-        let page = ALLOCATOR.kalloc().expect("kalloc kpgtbl failed");
-        page.memset(0x0usize, ALLOCATOR.page_size());
+        let page = ALLOCATOR.kalloc(true).expect("kalloc kpgtbl failed");
         let kpt = page.as_mut::<PageTable>().unwrap();
 
         // Erase the static attribute from ALLOCATOR
@@ -171,7 +170,7 @@ pub fn init_mapping() {
                 "kstack",
                 va,
                 def::PG_SIZE,
-                ALLOCATOR.kalloc().expect("kalloc stack failed").into(),
+                ALLOCATOR.kalloc(true).expect("kalloc stack failed").into(),
                 perm_rw,
                 "map stack failed",
             );
