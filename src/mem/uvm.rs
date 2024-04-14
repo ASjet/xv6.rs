@@ -1,9 +1,11 @@
+use core::ptr::addr_of;
+
 use crate::{
     arch::{
         def::pgroundup,
         vm::{free_pagetable, map_pages, PageTable},
     },
-    mem::alloc::{kalloc, kfree, page_size, LinkListAllocator},
+    mem::alloc::{kalloc, kfree, page_size, LinkListAllocator, ALLOCATOR},
 };
 use rv64::vm::{PteFlags, PTE};
 
@@ -104,7 +106,45 @@ impl UserPageTable {
         *pte = PTE::new(pte.addr(), pte.flags().set_user(false));
     }
 
+    /// Given a parent process's page table, copy
+    /// its memory into a child's page table.
+    /// Copies both the page table and the
+    /// physical memory.
+    /// returns 0 on success, -1 on failure.
+    /// frees any allocated pages on failure.
+    /// Safety: `sz` must be a valid size.
+    pub unsafe fn clone(&self, sz: usize) -> Option<UserPageTable> {
+        let mut new = UserPageTable::new()?;
+        let pg_size = page_size();
+        let alloc = &*addr_of!(ALLOCATOR);
+        for a in (0..sz).step_by(pg_size) {
+            let (_, pte) = unsafe { (*self.0).walk(a, 0, None::<&LinkListAllocator>) }
+                .expect("UserPageTable::copy: pte should exist");
+            let flags = pte.flags();
+            assert!(flags.valid(), "UserPageTable::copy: page not present");
+
+            let mem = kalloc(true).or_else(|| {
+                new.unmap(0, a / pg_size, true);
+                None
+            })?;
+
+            core::ptr::copy_nonoverlapping(
+                pte.addr().as_ptr::<u8>(),
+                mem.as_mut_ptr::<u8>(),
+                pg_size,
+            );
+
+            (*new.0)
+                .map_pages(a, pg_size, mem, flags, alloc)
+                .ok()
+                .or_else(|| {
+                    kfree(mem);
+                    new.unmap(0, a / pg_size, true);
+                    None
+                })?;
+        }
+        Some(new)
+    }
+
     // TODO: copyin, copyout, copyinstr
 }
-
-// TODO: impl Copy for UserPageTable
