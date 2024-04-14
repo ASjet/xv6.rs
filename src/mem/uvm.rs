@@ -3,7 +3,7 @@ use core::ptr::addr_of;
 use crate::{
     arch::{
         def::pgroundup,
-        vm::{free_pagetable, map_pages, PageTable},
+        vm::{free_pagetable, PageTable},
     },
     mem::alloc::{kalloc, kfree, page_size, LinkListAllocator, ALLOCATOR},
 };
@@ -30,12 +30,13 @@ impl UserPageTable {
             .set_executable(true)
             .set_readable(true)
             .set_user(true);
+        let alloc = unsafe { &*addr_of!(ALLOCATOR) };
 
         let oldsz = pgroundup(oldsz);
         for a in (oldsz..newsz).step_by(pg_size) {
             if let Some(page) = kalloc(true) {
                 unsafe {
-                    if map_pages(a, pg_size, page.into(), perm.into()).is_err() {
+                    if (*self.0).map_pages(a, pg_size, page, perm, alloc).is_err() {
                         kfree(page);
                         self.dealloc(a, oldsz);
                         return 0;
