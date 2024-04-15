@@ -172,6 +172,33 @@ impl UserPageTable {
         }
         Ok(())
     }
+
+    /// Copy from user to kernel.
+    /// Copy len bytes to dst from virtual address srcva in a given page table.
+    /// Return 0 on success, -1 on error.
+    pub unsafe fn copy_in(
+        &self,
+        dst: *mut u8,
+        srcva: usize,
+        len: usize,
+    ) -> Result<(), UserPageTableError> {
+        let mut len = len;
+        let mut src = srcva;
+        let mut dst = dst;
+        let pg_size = page_size();
+        while len > 0 {
+            let va0 = pgrounddown(src);
+            let (_, pte) = (*self.0)
+                .walk(va0, 0, None::<&LinkListAllocator>)
+                .map_err(|e| UserPageTableError::PageTableError(e))?;
+            let n = core::cmp::min(pg_size - (src - va0), len);
+            core::ptr::copy_nonoverlapping(pte.addr().as_ptr::<u8>().add(src - va0), dst, n);
+            len -= n;
+            dst = dst.add(n);
+            src = va0 + pg_size;
+        }
+        Ok(())
+    }
 }
 
 pub enum UserPageTableError {
