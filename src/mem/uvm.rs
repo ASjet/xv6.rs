@@ -199,6 +199,48 @@ impl UserPageTable {
         }
         Ok(())
     }
+
+    /// Copy a null-terminated string from user to kernel.
+    /// Copy bytes to dst from virtual address srcva in a given page table,
+    /// until a '\0', or max.
+    /// Return 0 on success, -1 on error.
+    pub unsafe fn copy_in_str(
+        &self,
+        dst: *mut u8,
+        srcva: usize,
+        max: usize,
+    ) -> Result<(), UserPageTableError> {
+        let mut got_null = false;
+        let pg_size = page_size();
+        let mut max = max;
+        let mut srcva = srcva;
+        while !got_null && max > 0 {
+            let va0 = pgrounddown(srcva);
+            let (_, pte) = (*self.0)
+                .walk(va0, 0, None::<&LinkListAllocator>)
+                .map_err(|e| UserPageTableError::PageTableError(e))?;
+            let n = core::cmp::min(pg_size - (srcva - va0), max);
+            let p = pte.addr().as_ptr::<u8>().add(srcva - va0);
+            for i in 0..n {
+                let ch = *p.add(i);
+                if ch == 0 {
+                    *dst.add(i) = 0;
+                    got_null = true;
+                    break;
+                } else {
+                    *dst.add(i) = *p.add(i);
+                }
+            }
+            max -= n;
+            srcva = va0 + page_size();
+        }
+
+        if got_null {
+            Ok(())
+        } else {
+            Err(UserPageTableError::InvalidString)
+        }
+    }
 }
 
 pub enum UserPageTableError {
