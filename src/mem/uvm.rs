@@ -1,13 +1,12 @@
-use core::ptr::addr_of;
-
 use crate::{
     arch::{
-        def::pgroundup,
+        def::{pgrounddown, pgroundup},
         vm::{free_pagetable, PageTable},
     },
     mem::alloc::{kalloc, kfree, page_size, LinkListAllocator, ALLOCATOR},
 };
-use rv64::vm::{PteFlags, PTE};
+use core::ptr::addr_of;
+use rv64::vm::{PageTableError, PteFlags, PTE};
 
 pub struct UserPageTable(*mut PageTable);
 
@@ -147,5 +146,35 @@ impl UserPageTable {
         Some(new)
     }
 
-    // TODO: copyin, copyout, copyinstr
+    /// Copy from kernel to user.
+    /// Copy len bytes from src to virtual address dstva in a given page table.
+    /// Return 0 on success, -1 on error.
+    pub unsafe fn copy_out(
+        &self,
+        dstva: usize,
+        src: *const u8,
+        len: usize,
+    ) -> Result<(), UserPageTableError> {
+        let mut len = len;
+        let mut src = src;
+        let mut dst = dstva;
+        let pg_size = page_size();
+        while len > 0 {
+            let va0 = pgrounddown(dst);
+            let (_, pte) = (*self.0)
+                .walk(va0, 0, None::<&LinkListAllocator>)
+                .map_err(|e| UserPageTableError::PageTableError(e))?;
+            let n = core::cmp::min(pg_size - (dst - va0), len);
+            core::ptr::copy_nonoverlapping(src, pte.addr().as_mut_ptr::<u8>().add(dst - va0), n);
+            len -= n;
+            src = src.add(n);
+            dst = va0 + pg_size;
+        }
+        Ok(())
+    }
+}
+
+pub enum UserPageTableError {
+    PageTableError(PageTableError),
+    InvalidString,
 }
