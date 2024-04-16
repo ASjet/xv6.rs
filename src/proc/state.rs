@@ -256,8 +256,15 @@ impl Proc {
 
     /// Free a process's page table, and free the
     /// physical memory it refers to.
-    fn free_pagetable(&self) {
-        todo!()
+    fn free_pagetable(&mut self) {
+        if self.pagetable.is_null() {
+            return;
+        }
+        unsafe {
+            self.pagetable.unmap(def::TRAMPOLINE, 1, false);
+            self.pagetable.unmap(def::TRAP_FRAME, 1, false);
+            self.pagetable.free(self.size);
+        }
     }
 
     /// Grow or shrink user memory by n bytes.
