@@ -8,12 +8,24 @@ use crate::{
 use core::ptr::addr_of;
 use rv64::vm::{PageTableError, PteFlags, PTE};
 
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct UserPageTable(*mut PageTable);
 
 impl UserPageTable {
     pub fn new() -> Option<UserPageTable> {
         let page = kalloc(true)?;
         Some(UserPageTable(page.as_mut_ptr::<PageTable>()))
+    }
+
+    #[inline]
+    pub const fn null() -> UserPageTable {
+        UserPageTable(core::ptr::null_mut())
+    }
+
+    #[inline]
+    pub fn is_null(&self) -> bool {
+        self.0.is_null()
     }
 
     /// Allocate PTEs and physical memory to grow process from oldsz to
