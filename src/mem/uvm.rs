@@ -8,6 +8,8 @@ use crate::{
 use core::ptr::addr_of;
 use rv64::vm::{PageTableError, PteFlags, PTE};
 
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub struct UserPageTable(*mut PageTable);
 
 impl UserPageTable {
@@ -16,11 +18,21 @@ impl UserPageTable {
         Some(UserPageTable(page.as_mut_ptr::<PageTable>()))
     }
 
+    #[inline]
+    pub const fn null() -> UserPageTable {
+        UserPageTable(core::ptr::null_mut())
+    }
+
+    #[inline]
+    pub fn is_null(&self) -> bool {
+        self.0.is_null()
+    }
+
     /// Allocate PTEs and physical memory to grow process from oldsz to
     /// newsz, which need not be page aligned.  Returns new size or 0 on error.
-    pub fn alloc(&mut self, oldsz: usize, newsz: usize) -> usize {
+    pub fn alloc(&mut self, oldsz: usize, newsz: usize) -> Option<usize> {
         if newsz < oldsz {
-            return oldsz;
+            return Some(oldsz);
         }
 
         let pg_size = page_size();
@@ -38,15 +50,15 @@ impl UserPageTable {
                     if (*self.0).map_pages(a, pg_size, page, perm, alloc).is_err() {
                         kfree(page);
                         self.dealloc(a, oldsz);
-                        return 0;
+                        return None;
                     }
                 }
             } else {
                 self.dealloc(a, oldsz);
-                return 0;
+                return None;
             }
         }
-        newsz
+        Some(newsz)
     }
 
     /// Deallocate user pages to bring the process size from oldsz to
@@ -67,6 +79,19 @@ impl UserPageTable {
             }
         }
         newsz
+    }
+
+    pub unsafe fn map(
+        &mut self,
+        va: usize,
+        sz: usize,
+        pa: usize,
+        perm: PteFlags,
+    ) -> Result<(), UserPageTableError> {
+        let alloc = &*addr_of!(ALLOCATOR);
+        (*self.0)
+            .map_pages(va, sz, pa, perm, alloc)
+            .map_err(|e| UserPageTableError::PageTableError(e))
     }
 
     /// Remove npages of mappings starting from va. va must be

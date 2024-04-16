@@ -3,11 +3,17 @@ use crate::{
     arch::{
         self,
         def::{self, PG_SIZE},
+        vm,
     },
-    mem::alloc,
+    mem::{alloc, uvm::UserPageTable},
     spinlock::Mutex,
 };
-use core::{mem::size_of, ptr::addr_of_mut};
+use core::{
+    mem::size_of,
+    ops::{Add, Sub},
+    ptr::addr_of_mut,
+};
+use rv64::vm::PteFlags;
 
 pub static GLOBAL_LOCK: Mutex<()> = Mutex::new((), "global_proc_lock");
 
@@ -76,7 +82,7 @@ pub struct Proc {
     /// Size of process memory in bytes
     size: usize,
     /// User page table
-    pagetable: *mut arch::vm::PageTable,
+    pagetable: UserPageTable,
     /// Data for trampoline
     trapframe: *mut arch::trampoline::TrapFrame,
     /// swtch() here to run process
@@ -102,7 +108,7 @@ impl Proc {
             name: [0; 16],
             kstack,
             size: 0,
-            pagetable: core::ptr::null_mut(),
+            pagetable: UserPageTable::null(),
             trapframe: core::ptr::null_mut(),
             context: switch::Context::new(),
         }
@@ -194,7 +200,7 @@ impl Proc {
         }
         if !self.pagetable.is_null() {
             self.free_pagetable();
-            self.pagetable = core::ptr::null_mut();
+            self.pagetable = UserPageTable::null();
         }
         self.size = 0;
         self.parent = core::ptr::null_mut();
@@ -210,20 +216,82 @@ impl Proc {
 
     /// Create a user page table for a given process,
     /// with no user memory, but with trampoline pages.
-    fn alloc_pagetable(&self) -> Option<*mut arch::vm::PageTable> {
-        todo!()
+    fn alloc_pagetable(&self) -> Option<UserPageTable> {
+        // An empty page table.
+        let mut pagetable = UserPageTable::new()?;
+
+        unsafe {
+            // map the trampoline code (for system call return)
+            // at the highest user virtual address.
+            // only the supervisor uses it, on the way
+            // to/from user space, so not PTE_U.
+            // if !pagetable.map(def::TRAMPOLINE, sz, pa, perm)
+            pagetable
+                .map(
+                    def::TRAMPOLINE,
+                    PG_SIZE,
+                    vm::trampoline(),
+                    PteFlags::new().set_readable(true).set_executable(true),
+                )
+                .ok()
+                .or_else(|| {
+                    pagetable.free(0);
+                    None
+                })?;
+
+            // map the trapframe just below TRAMPOLINE, for trampoline.S.
+            pagetable
+                .map(
+                    def::TRAP_FRAME,
+                    PG_SIZE,
+                    self.trapframe as usize,
+                    PteFlags::new().set_readable(true).set_writable(true),
+                )
+                .ok()
+                .or_else(|| {
+                    pagetable.unmap(def::TRAMPOLINE, 1, false);
+                    pagetable.free(0);
+                    None
+                })?;
+        }
+
+        Some(pagetable)
     }
 
     /// Free a process's page table, and free the
     /// physical memory it refers to.
-    fn free_pagetable(&self) {
-        todo!()
+    fn free_pagetable(&mut self) {
+        if self.pagetable.is_null() {
+            return;
+        }
+        unsafe {
+            self.pagetable.unmap(def::TRAMPOLINE, 1, false);
+            self.pagetable.unmap(def::TRAP_FRAME, 1, false);
+            self.pagetable.free(self.size);
+        }
     }
 
     /// Grow or shrink user memory by n bytes.
     /// Return `true` on success, `false` on failure.
-    pub fn grow(&mut self, _sz: usize) -> bool {
-        todo!()
+    pub fn grow(&mut self, delta: isize) -> bool {
+        let old_size = self.size;
+        let new_size = if delta > 0 {
+            let sz = self
+                .pagetable
+                .alloc(old_size, old_size.add(delta as usize))
+                .unwrap_or(0);
+            if sz == 0 {
+                return false;
+            }
+            sz
+        } else if delta < 0 {
+            self.pagetable
+                .dealloc(old_size, old_size.sub(delta.abs() as usize))
+        } else {
+            old_size
+        };
+        self.size = new_size;
+        true
     }
 
     /// Create a new process, copying the parent.
