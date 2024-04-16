@@ -69,6 +69,19 @@ impl UserPageTable {
         newsz
     }
 
+    pub unsafe fn map(
+        &mut self,
+        va: usize,
+        sz: usize,
+        pa: usize,
+        perm: PteFlags,
+    ) -> Result<(), UserPageTableError> {
+        let alloc = &*addr_of!(ALLOCATOR);
+        (*self.0)
+            .map_pages(va, sz, pa, perm, alloc)
+            .map_err(|e| UserPageTableError::PageTableError(e))
+    }
+
     /// Remove npages of mappings starting from va. va must be
     /// page-aligned. The mappings must exist.
     /// Optionally free the physical memory.
