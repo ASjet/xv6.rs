@@ -153,7 +153,7 @@ pub fn init_mapping() {
         // the highest virtual address in the kernel.
         map_pages_log(
             "trampoline",
-            usize::from(PageTable::max_va()) - def::PG_SIZE,
+            def::TRAMPOLINE,
             def::PG_SIZE,
             trampoline,
             perm_rx,
