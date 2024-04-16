@@ -3,11 +3,13 @@ use crate::{
     arch::{
         self,
         def::{self, PG_SIZE},
+        vm,
     },
     mem::{alloc, uvm::UserPageTable},
     spinlock::Mutex,
 };
 use core::{mem::size_of, ptr::addr_of_mut};
+use rv64::vm::PteFlags;
 
 pub static GLOBAL_LOCK: Mutex<()> = Mutex::new((), "global_proc_lock");
 
@@ -211,7 +213,45 @@ impl Proc {
     /// Create a user page table for a given process,
     /// with no user memory, but with trampoline pages.
     fn alloc_pagetable(&self) -> Option<UserPageTable> {
-        todo!()
+        // An empty page table.
+        let mut pagetable = UserPageTable::new()?;
+
+        unsafe {
+            // map the trampoline code (for system call return)
+            // at the highest user virtual address.
+            // only the supervisor uses it, on the way
+            // to/from user space, so not PTE_U.
+            // if !pagetable.map(def::TRAMPOLINE, sz, pa, perm)
+            pagetable
+                .map(
+                    def::TRAMPOLINE,
+                    PG_SIZE,
+                    vm::trampoline(),
+                    PteFlags::new().set_readable(true).set_executable(true),
+                )
+                .ok()
+                .or_else(|| {
+                    pagetable.free(0);
+                    None
+                })?;
+
+            // map the trapframe just below TRAMPOLINE, for trampoline.S.
+            pagetable
+                .map(
+                    def::TRAP_FRAME,
+                    PG_SIZE,
+                    self.trapframe as usize,
+                    PteFlags::new().set_readable(true).set_writable(true),
+                )
+                .ok()
+                .or_else(|| {
+                    pagetable.unmap(def::TRAMPOLINE, 1, false);
+                    pagetable.free(0);
+                    None
+                })?;
+        }
+
+        Some(pagetable)
     }
 
     /// Free a process's page table, and free the
