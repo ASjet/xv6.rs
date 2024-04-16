@@ -8,7 +8,11 @@ use crate::{
     mem::{alloc, uvm::UserPageTable},
     spinlock::Mutex,
 };
-use core::{mem::size_of, ptr::addr_of_mut};
+use core::{
+    mem::size_of,
+    ops::{Add, Sub},
+    ptr::addr_of_mut,
+};
 use rv64::vm::PteFlags;
 
 pub static GLOBAL_LOCK: Mutex<()> = Mutex::new((), "global_proc_lock");
@@ -269,8 +273,25 @@ impl Proc {
 
     /// Grow or shrink user memory by n bytes.
     /// Return `true` on success, `false` on failure.
-    pub fn grow(&mut self, _sz: usize) -> bool {
-        todo!()
+    pub fn grow(&mut self, delta: isize) -> bool {
+        let old_size = self.size;
+        let new_size = if delta > 0 {
+            let sz = self
+                .pagetable
+                .alloc(old_size, old_size.add(delta as usize))
+                .unwrap_or(0);
+            if sz == 0 {
+                return false;
+            }
+            sz
+        } else if delta < 0 {
+            self.pagetable
+                .dealloc(old_size, old_size.sub(delta.abs() as usize))
+        } else {
+            old_size
+        };
+        self.size = new_size;
+        true
     }
 
     /// Create a new process, copying the parent.
