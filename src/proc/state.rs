@@ -4,7 +4,7 @@ use crate::{
         self,
         def::{self, PG_SIZE},
     },
-    mem::alloc,
+    mem::{alloc, uvm::UserPageTable},
     spinlock::Mutex,
 };
 use core::{mem::size_of, ptr::addr_of_mut};
@@ -76,7 +76,7 @@ pub struct Proc {
     /// Size of process memory in bytes
     size: usize,
     /// User page table
-    pagetable: *mut arch::vm::PageTable,
+    pagetable: UserPageTable,
     /// Data for trampoline
     trapframe: *mut arch::trampoline::TrapFrame,
     /// swtch() here to run process
@@ -102,7 +102,7 @@ impl Proc {
             name: [0; 16],
             kstack,
             size: 0,
-            pagetable: core::ptr::null_mut(),
+            pagetable: UserPageTable::null(),
             trapframe: core::ptr::null_mut(),
             context: switch::Context::new(),
         }
@@ -194,7 +194,7 @@ impl Proc {
         }
         if !self.pagetable.is_null() {
             self.free_pagetable();
-            self.pagetable = core::ptr::null_mut();
+            self.pagetable = UserPageTable::null();
         }
         self.size = 0;
         self.parent = core::ptr::null_mut();
@@ -210,7 +210,7 @@ impl Proc {
 
     /// Create a user page table for a given process,
     /// with no user memory, but with trampoline pages.
-    fn alloc_pagetable(&self) -> Option<*mut arch::vm::PageTable> {
+    fn alloc_pagetable(&self) -> Option<UserPageTable> {
         todo!()
     }
 
