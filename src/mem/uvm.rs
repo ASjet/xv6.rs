@@ -30,9 +30,9 @@ impl UserPageTable {
 
     /// Allocate PTEs and physical memory to grow process from oldsz to
     /// newsz, which need not be page aligned.  Returns new size or 0 on error.
-    pub fn alloc(&mut self, oldsz: usize, newsz: usize) -> usize {
+    pub fn alloc(&mut self, oldsz: usize, newsz: usize) -> Option<usize> {
         if newsz < oldsz {
-            return oldsz;
+            return Some(oldsz);
         }
 
         let pg_size = page_size();
@@ -50,15 +50,15 @@ impl UserPageTable {
                     if (*self.0).map_pages(a, pg_size, page, perm, alloc).is_err() {
                         kfree(page);
                         self.dealloc(a, oldsz);
-                        return 0;
+                        return None;
                     }
                 }
             } else {
                 self.dealloc(a, oldsz);
-                return 0;
+                return None;
             }
         }
-        newsz
+        Some(newsz)
     }
 
     /// Deallocate user pages to bring the process size from oldsz to
