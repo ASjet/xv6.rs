@@ -56,7 +56,10 @@ pub enum State {
 }
 
 // TODO: Implement ProcError
-pub type ForkError = ();
+pub enum ForkError {
+    AllocFailed,
+    CopyPageTableFailed,
+}
 
 #[derive(Debug)]
 struct _ProcSync {
@@ -114,6 +117,10 @@ impl Proc {
         }
     }
 
+    pub fn pid(&self) -> Option<Pid> {
+        self.sync.lock().pid
+    }
+
     pub fn state(&self) -> State {
         self.sync.lock().state
     }
@@ -161,7 +168,7 @@ impl Proc {
     /// If found, initialize state required to run in the kernel,
     /// and return with p->lock held.(FIXME: Is holding lock necessary?)
     /// If there are no free procs, or a memory allocation fails, return 0.
-    pub fn alloc() -> Option<*mut Proc> {
+    pub fn alloc(pagetable: Option<UserPageTable>) -> Option<*mut Proc> {
         let p = unsafe {
             (*PROCS)
                 .iter_mut()
@@ -178,10 +185,10 @@ impl Proc {
             })?
             .as_mut_ptr::<arch::trampoline::TrapFrame>();
 
-        p.pagetable = p.alloc_pagetable().or_else(|| {
+        p.pagetable = pagetable.or(p.alloc_pagetable().or_else(|| {
             p.free();
             None
-        })?;
+        }))?;
 
         p.context.setup(fork_ret as usize, p.kstack + PG_SIZE);
 
@@ -297,7 +304,44 @@ impl Proc {
     /// Create a new process, copying the parent.
     /// Sets up child kernel stack to return as if from fork() system call.
     pub fn fork(&self) -> Result<Pid, ForkError> {
-        todo!()
+        // Copy user memory from parent to child.
+        let new_pgtbl = unsafe {
+            self.pagetable
+                .clone(self.size)
+                .ok_or(ForkError::CopyPageTableFailed)
+        }?;
+
+        // Allocate process.
+        let np = Proc::alloc(Some(new_pgtbl)).ok_or(ForkError::AllocFailed)?;
+        let np_ref = unsafe { np.as_mut().unwrap_unchecked() };
+
+        np_ref.size = self.size;
+        np_ref.name = self.name.clone();
+
+        unsafe {
+            // copy saved user registers.
+            *np_ref.trapframe = *self.trapframe;
+
+            // Cause fork to return 0 in the child.
+            (*np_ref.trapframe).a0 = 0;
+
+            {
+                let _guard = GLOBAL_LOCK.lock();
+                np_ref.parent = CPU::this_proc().unwrap();
+            }
+        }
+
+        // increment reference counts on open file descriptors.
+        // TODO: copy file descriptor
+
+        let pid = {
+            let mut sync = np_ref.sync.lock();
+            sync.state = State::Runnable;
+            sync.pid
+        }
+        .unwrap();
+
+        Ok(pid)
     }
 
     /// Pass p's abandoned children to init.
