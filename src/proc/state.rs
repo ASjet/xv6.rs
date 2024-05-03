@@ -361,14 +361,30 @@ impl Proc {
     /// Exit the current process.  Does not return.
     /// An exited process remains in the zombie state
     /// until its parent calls wait().
-    pub fn exit(&mut self) {
+    pub fn exit(&mut self, state: i32) -> ! {
         unsafe {
             assert!(INIT_PROC != self, "init exiting");
         }
 
-        // TODO: close all open files and handle fs cwd
+        // TODO: close all open files and handle fs cwd here
 
-        self.reparent();
+        {
+            let _guard = GLOBAL_LOCK.lock();
+
+            // Give any children to init.
+            self.reparent();
+
+            // Parent might be sleeping in wait().
+            Self::wake_up(self.parent as usize);
+
+            {
+                let mut sync = self.sync.lock();
+                sync.xstate = state;
+                sync.state = State::Zombie;
+            }
+        }
+        unsafe { self.sched() };
+        panic!("zombie exit");
     }
 
     /// Wait for a child process to exit and return its pid.
@@ -402,9 +418,7 @@ impl Proc {
             sync.chan = chan;
             sync.state = State::Sleeping;
 
-            unsafe {
-                self.sched();
-            }
+            unsafe { self.sched() };
 
             // Tidy up
             sync.chan = 0;
