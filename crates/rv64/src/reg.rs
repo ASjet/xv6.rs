@@ -112,7 +112,7 @@ macro_rules! mv_reg_rw {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRW<$val> for $reg {
+        impl crate::reg::RegisterRW<$val> for $reg {
             #[inline]
             fn read(&self) -> $val {
                 let r: usize;
@@ -147,7 +147,7 @@ macro_rules! mv_reg_ro {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO<usize> for $reg {
+        impl crate::reg::RegisterRO<usize> for $reg {
             #[inline]
             fn read(&self) -> usize {
                 let r: usize;
@@ -186,7 +186,7 @@ macro_rules! mv_reg_ro {
         #[allow(non_camel_case_types)]
         pub struct $reg;
 
-        impl crate::insn::RegisterRO<$val> for $reg {
+        impl crate::reg::RegisterRO<$val> for $reg {
             #[inline]
             fn read(&self) -> $val {
                 let r: usize;
@@ -328,6 +328,8 @@ macro_rules! csr_reg_ro {
                 $val(v)
             }
         }
+
+
 
         $(#[$m])*
         #[allow(non_camel_case_types)]
