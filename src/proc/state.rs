@@ -11,7 +11,7 @@ use crate::{
 use core::{
     mem::size_of,
     ops::{Add, Sub},
-    ptr::{addr_of, addr_of_mut},
+    ptr::addr_of_mut,
 };
 use rv64::vm::PteFlags;
 
@@ -124,6 +124,18 @@ impl Proc {
 
     pub fn state(&self) -> State {
         self.sync.lock().state
+    }
+
+    pub fn trapframe(&self) -> *mut arch::trampoline::TrapFrame {
+        self.trapframe
+    }
+
+    pub fn pagetable(&self) -> UserPageTable {
+        self.pagetable
+    }
+
+    pub fn kstack(&self) -> usize {
+        self.kstack
     }
 
     pub fn cas_state(&self, old: State, new: State) -> bool {
@@ -498,5 +510,5 @@ pub fn scheduler() -> ! {
 }
 
 fn fork_ret() {
-    todo!()
+    // TODO: once.Do(fsinit)
 }

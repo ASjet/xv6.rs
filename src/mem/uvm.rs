@@ -28,6 +28,16 @@ impl UserPageTable {
         self.0.is_null()
     }
 
+    #[inline]
+    pub fn as_ptr(&self) -> *const PageTable {
+        self.0
+    }
+
+    #[inline]
+    pub fn as_mut(&self) -> *mut PageTable {
+        self.0
+    }
+
     /// Allocate PTEs and physical memory to grow process from oldsz to
     /// newsz, which need not be page aligned.  Returns new size or 0 on error.
     pub fn alloc(&mut self, oldsz: usize, newsz: usize) -> Option<usize> {
@@ -271,4 +281,11 @@ impl UserPageTable {
 pub enum UserPageTableError {
     PageTableError(PageTableError),
     InvalidString,
+}
+
+impl Into<usize> for UserPageTable {
+    #[inline]
+    fn into(self) -> usize {
+        self.0 as usize
+    }
 }
