@@ -6,7 +6,7 @@ use crate::{
         vm,
     },
     mem::{alloc, uvm::UserPageTable},
-    spinlock::Mutex,
+    spinlock::{self, Mutex},
 };
 use core::{
     mem::size_of,
@@ -377,10 +377,40 @@ impl Proc {
         todo!()
     }
 
-    // Atomically release lock and sleep on chan.
-    // Reacquires lock when awakened.
-    pub fn sleep(&self) {
-        todo!()
+    /// Atomically release lock and sleep on chan.
+    /// Reacquires lock when awakened.
+    pub fn sleep<'a, T>(
+        &self,
+        chan: usize,
+        guard: spinlock::MutexGuard<'a, T>,
+    ) -> spinlock::MutexGuard<'a, T> {
+        let lock;
+        {
+            // Must acquire p->lock in order to
+            // change p->state and then call sched.
+            // Once we hold p->lock, we can be
+            // guaranteed that we won't miss any wakeup
+            // (wakeup locks p->lock),
+            // so it's okay to release lk.
+            let mut sync = self.sync.lock();
+
+            // Since we need to require the lock from the guard,
+            // we need to re-create the lock from the guard here
+            lock = spinlock::Mutex::unlock(guard);
+
+            // Go to sleep
+            sync.chan = chan;
+            sync.state = State::Sleeping;
+
+            unsafe {
+                self.sched();
+            }
+
+            // Tidy up
+            sync.chan = 0;
+        }
+        // Reacquire original lock and return guard
+        lock.lock()
     }
 
     pub fn wake_up(chan: usize) {
