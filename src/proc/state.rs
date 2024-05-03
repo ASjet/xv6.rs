@@ -430,10 +430,12 @@ impl Proc {
     pub fn wake_up(chan: usize) {
         unsafe {
             (*PROCS).iter_mut().for_each(|p| {
-                if CPU::this_proc().unwrap_or(core::ptr::null_mut()) != p {
-                    let mut sync = p.sync.lock();
-                    if sync.state == State::Sleeping && sync.chan == chan {
-                        sync.state = State::Runnable;
+                if let Some(this_proc) = CPU::this_proc() {
+                    if this_proc != p {
+                        let mut sync = p.sync.lock();
+                        if sync.state == State::Sleeping && sync.chan == chan {
+                            sync.state = State::Runnable;
+                        }
                     }
                 }
             });
