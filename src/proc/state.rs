@@ -11,7 +11,7 @@ use crate::{
 use core::{
     mem::size_of,
     ops::{Add, Sub},
-    ptr::addr_of_mut,
+    ptr::{addr_of, addr_of_mut},
 };
 use rv64::vm::PteFlags;
 
@@ -65,7 +65,7 @@ pub enum ForkError {
 #[derive(Debug)]
 struct _ProcSync {
     state: State,
-    chan: *mut (),
+    chan: usize, // An identifier to sleep on and wake up for
     killed: bool,
     xstate: i32,
     pid: Option<Pid>,
@@ -101,7 +101,7 @@ impl Proc {
             sync: Mutex::new(
                 _ProcSync {
                     state: State::Unused,
-                    chan: core::ptr::null_mut(),
+                    chan: 0,
                     killed: false,
                     xstate: 0,
                     pid: None,
@@ -217,7 +217,7 @@ impl Proc {
         let mut sync = self.sync.lock();
         sync.state = State::Unused;
         sync.pid = None;
-        sync.chan = core::ptr::null_mut();
+        sync.chan = 0;
         sync.killed = false;
         sync.xstate = 0;
     }
@@ -352,7 +352,7 @@ impl Proc {
             (*PROCS).iter_mut().for_each(|p| {
                 if p.parent == self {
                     p.parent = INIT_PROC;
-                    wake_up(); // TODO: wake up INIT_PROC
+                    Self::wake_up(INIT_PROC as usize); // TODO: wake up INIT_PROC
                 }
             });
         }
@@ -362,7 +362,13 @@ impl Proc {
     /// An exited process remains in the zombie state
     /// until its parent calls wait().
     pub fn exit(&mut self) {
-        todo!()
+        unsafe {
+            assert!(INIT_PROC != self, "init exiting");
+        }
+
+        // TODO: close all open files and handle fs cwd
+
+        self.reparent();
     }
 
     /// Wait for a child process to exit and return its pid.
@@ -375,6 +381,19 @@ impl Proc {
     // Reacquires lock when awakened.
     pub fn sleep(&self) {
         todo!()
+    }
+
+    pub fn wake_up(chan: usize) {
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                if CPU::this_proc().unwrap_or(core::ptr::null_mut()) != p {
+                    let mut sync = p.sync.lock();
+                    if sync.state == State::Sleeping && sync.chan == chan {
+                        sync.state = State::Runnable;
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -416,10 +435,6 @@ pub fn scheduler() -> ! {
 }
 
 fn fork_ret() {
-    todo!()
-}
-
-fn wake_up() {
     todo!()
 }
 
