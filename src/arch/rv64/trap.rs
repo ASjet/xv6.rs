@@ -1,8 +1,10 @@
-use super::{def, interrupt};
+use super::def::{TRAMPOLINE, TRAP_FRAME};
+use super::{def, interrupt, intr_off, vm};
 use crate::arch;
 use crate::proc::{State, CPU};
 use core::{arch::global_asm, panic};
 use rv64::reg::{self, RegisterRO, RegisterRW};
+use rv64::BitFlagOps;
 
 static mut TIMER_SCRATCH: [[u64; 5]; crate::NCPU] = [[0; 5]; crate::NCPU];
 
@@ -167,10 +169,10 @@ global_asm!(
 #[no_mangle]
 extern "C" fn kernel_trap() {
     let sepc = reg::sepc.read();
-    let sstatus = reg::sstatus.read();
+    let sstatus_v = reg::sstatus.read();
 
     assert!(
-        sstatus.spp() == rv64::PrivilegeLevel::S,
+        sstatus_v.spp() == rv64::PrivilegeLevel::S,
         "kernel trap: not from supervisor mode"
     );
     assert!(!arch::is_intr_on(), "kernel_trap: interrupts enabled");
@@ -204,6 +206,59 @@ extern "C" fn kernel_trap() {
     }
     unsafe {
         reg::sepc.write(sepc);
-        reg::sstatus.write(sstatus);
+        reg::sstatus.write(sstatus_v);
+    }
+}
+
+extern "C" fn user_trap() {
+    todo!()
+}
+
+/// Return to user space
+#[no_mangle]
+pub extern "C" fn user_trap_ret() {
+    let p = unsafe { &mut *CPU::this_proc().unwrap() };
+
+    // we're about to switch the destination of traps from
+    // kerneltrap() to usertrap(), so turn off interrupts until
+    // we're back in user space, where usertrap() is correct.
+    intr_off();
+
+    unsafe {
+        // send syscalls, interrupts, and exceptions to trampoline.S
+        reg::stvec.write((TRAMPOLINE + (vm::uservec() - vm::trampoline())).into());
+
+        // set up trapframe values that uservec will need when
+        // the process next re-enters the kernel.
+        let trapframe = &mut *p.trapframe();
+        trapframe.kernel_satp = reg::satp.read(); // kernel page table
+        trapframe.kernel_sp = p.kstack(); // process's kernel stack
+        trapframe.kernel_trap = user_trap as usize;
+        trapframe.kernel_hartid = arch::cpuid(); // hartid for cpuid()
+
+        // set up the registers that trampoline.S's sret will use
+        // to get to user space.
+
+        // set S Previous Privilege mode to User.
+        reg::sstatus.write(
+            reg::sstatus
+                .read()
+                .clear_mask(&reg::sstatus::SPP) // clear SPP to 0 for user mode
+                .set_mask(&reg::sstatus::SPIE) // enable interrupts in user mode
+                .into(),
+        );
+
+        // set S Exception Program Counter to the saved user pc.
+        reg::sepc.write(trapframe.epc);
+
+        // tell trampoline.S the user page table to switch to.
+        let satp_v = reg::satp.make(reg::SatpMode::Sv39, 0, p.pagetable().into());
+
+        // jump to trampoline.S at the top of memory, which
+        // switches to the user page table, restores user registers,
+        // and switches to user mode with sret.
+        let func: extern "C" fn(usize, usize) =
+            core::mem::transmute(TRAMPOLINE + (vm::userret() - vm::trampoline()));
+        func(TRAP_FRAME, satp_v.into());
     }
 }

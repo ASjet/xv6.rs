@@ -6,7 +6,7 @@ use crate::{
         vm,
     },
     mem::{alloc, uvm::UserPageTable},
-    spinlock::Mutex,
+    spinlock::{self, Mutex},
 };
 use core::{
     mem::size_of,
@@ -31,6 +31,7 @@ pub fn alloc_pid() -> Pid {
 static mut _PROC_MEM: [usize; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()] =
     [0; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()];
 pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
+pub static mut INIT_PROC: *mut Proc = core::ptr::null_mut();
 
 pub fn kstack_addrs() -> [usize; crate::NPROC] {
     core::array::from_fn(arch::def::kstack)
@@ -64,7 +65,7 @@ pub enum ForkError {
 #[derive(Debug)]
 struct _ProcSync {
     state: State,
-    chan: *mut (),
+    chan: usize, // An identifier to sleep on and wake up for
     killed: bool,
     xstate: i32,
     pid: Option<Pid>,
@@ -100,7 +101,7 @@ impl Proc {
             sync: Mutex::new(
                 _ProcSync {
                     state: State::Unused,
-                    chan: core::ptr::null_mut(),
+                    chan: 0,
                     killed: false,
                     xstate: 0,
                     pid: None,
@@ -123,6 +124,18 @@ impl Proc {
 
     pub fn state(&self) -> State {
         self.sync.lock().state
+    }
+
+    pub fn trapframe(&self) -> *mut arch::trampoline::TrapFrame {
+        self.trapframe
+    }
+
+    pub fn pagetable(&self) -> UserPageTable {
+        self.pagetable
+    }
+
+    pub fn kstack(&self) -> usize {
+        self.kstack
     }
 
     pub fn cas_state(&self, old: State, new: State) -> bool {
@@ -216,7 +229,7 @@ impl Proc {
         let mut sync = self.sync.lock();
         sync.state = State::Unused;
         sync.pid = None;
-        sync.chan = core::ptr::null_mut();
+        sync.chan = 0;
         sync.killed = false;
         sync.xstate = 0;
     }
@@ -347,14 +360,43 @@ impl Proc {
     /// Pass p's abandoned children to init.
     /// Caller must hold wait_lock.
     pub fn reparent(&mut self) {
-        todo!()
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                if p.parent == self {
+                    p.parent = INIT_PROC;
+                    Self::wake_up(INIT_PROC as usize); // TODO: wake up INIT_PROC
+                }
+            });
+        }
     }
 
     /// Exit the current process.  Does not return.
     /// An exited process remains in the zombie state
     /// until its parent calls wait().
-    pub fn exit(&mut self) {
-        todo!()
+    pub fn exit(&mut self, state: i32) -> ! {
+        unsafe {
+            assert!(INIT_PROC != self, "init exiting");
+        }
+
+        // TODO: close all open files and handle fs cwd here
+
+        {
+            let _guard = GLOBAL_LOCK.lock();
+
+            // Give any children to init.
+            self.reparent();
+
+            // Parent might be sleeping in wait().
+            Self::wake_up(self.parent as usize);
+
+            {
+                let mut sync = self.sync.lock();
+                sync.xstate = state;
+                sync.state = State::Zombie;
+            }
+        }
+        unsafe { self.sched() };
+        panic!("zombie exit");
     }
 
     /// Wait for a child process to exit and return its pid.
@@ -363,10 +405,70 @@ impl Proc {
         todo!()
     }
 
-    // Atomically release lock and sleep on chan.
-    // Reacquires lock when awakened.
-    pub fn sleep(&self) {
-        todo!()
+    /// Atomically release lock and sleep on chan.
+    /// Reacquires lock when awakened.
+    pub fn sleep<'a, T>(
+        &self,
+        chan: usize,
+        guard: spinlock::MutexGuard<'a, T>,
+    ) -> spinlock::MutexGuard<'a, T> {
+        let lock;
+        {
+            // Must acquire p->lock in order to
+            // change p->state and then call sched.
+            // Once we hold p->lock, we can be
+            // guaranteed that we won't miss any wakeup
+            // (wakeup locks p->lock),
+            // so it's okay to release lk.
+            let mut sync = self.sync.lock();
+
+            // Since we need to require the lock from the guard,
+            // we need to re-create the lock from the guard here
+            lock = spinlock::Mutex::unlock(guard);
+
+            // Go to sleep
+            sync.chan = chan;
+            sync.state = State::Sleeping;
+
+            unsafe { self.sched() };
+
+            // Tidy up
+            sync.chan = 0;
+        }
+        // Reacquire original lock and return guard
+        lock.lock()
+    }
+
+    pub fn wake_up(chan: usize) {
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                if let Some(this_proc) = CPU::this_proc() {
+                    if this_proc != p {
+                        let mut sync = p.sync.lock();
+                        if sync.state == State::Sleeping && sync.chan == chan {
+                            sync.state = State::Runnable;
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    pub fn kill(target: Pid) {
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                let mut sync = p.sync.lock();
+                if let Some(pid) = sync.pid {
+                    if pid == target {
+                        sync.killed = true;
+                        if sync.state == State::Sleeping {
+                            sync.state = State::Runnable;
+                        }
+                        return;
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -408,13 +510,6 @@ pub fn scheduler() -> ! {
 }
 
 fn fork_ret() {
-    todo!()
-}
-
-fn wake_up() {
-    todo!()
-}
-
-fn kill(_pid: Pid) {
-    todo!()
+    // TODO: once.Do(fsinit)
+    arch::trap::user_trap_ret();
 }

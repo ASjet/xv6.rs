@@ -131,3 +131,27 @@ pub enum PrivilegeLevel {
     Reserved = 0b10,
     M = 0b11,
 }
+
+pub trait BitFlagOps: Into<usize> {
+    #[inline]
+    fn read_mask(self, mask: &BitFlag) -> usize {
+        mask.read(self.into())
+    }
+
+    #[inline]
+    fn write_mask(self, mask: &BitFlag, value: usize) -> usize {
+        mask.write(self.into(), value)
+    }
+
+    #[inline]
+    fn set_mask(self, mask: &BitFlag) -> usize {
+        mask.set(self.into())
+    }
+
+    #[inline]
+    fn clear_mask(self, mask: &BitFlag) -> usize {
+        mask.clear(self.into())
+    }
+}
+
+impl BitFlagOps for usize {}

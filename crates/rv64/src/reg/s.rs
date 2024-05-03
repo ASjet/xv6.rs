@@ -237,10 +237,13 @@ impl satp {
 
     #[inline]
     pub unsafe fn set(&self, mode: SatpMode, asid: usize, pa: usize) {
-        self.write(
-            (satp::MODE.make(mode as usize))
-                | (satp::ASID.make(asid))
-                | (satp::PPN.make(PA_PPN.read(pa))),
-        );
+        self.write(self.make(mode, asid, pa));
+    }
+
+    #[inline]
+    pub unsafe fn make(&self, mode: SatpMode, asid: usize, pa: usize) -> usize {
+        (satp::MODE.make(mode as usize))
+            | (satp::ASID.make(asid))
+            | (satp::PPN.make(PA_PPN.read(pa)))
     }
 }
