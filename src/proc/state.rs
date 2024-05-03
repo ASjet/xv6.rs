@@ -439,6 +439,23 @@ impl Proc {
             });
         }
     }
+
+    pub fn kill(target: Pid) {
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                let mut sync = p.sync.lock();
+                if let Some(pid) = sync.pid {
+                    if pid == target {
+                        sync.killed = true;
+                        if sync.state == State::Sleeping {
+                            sync.state = State::Runnable;
+                        }
+                        return;
+                    }
+                }
+            });
+        }
+    }
 }
 
 /// Per-CPU process scheduler.
@@ -479,9 +496,5 @@ pub fn scheduler() -> ! {
 }
 
 fn fork_ret() {
-    todo!()
-}
-
-fn kill(_pid: Pid) {
     todo!()
 }
