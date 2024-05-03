@@ -25,6 +25,8 @@ addr_reader!(heap_end, _eheap);
 addr_reader!(stack_start, _sstack);
 addr_reader!(stack_end, _estack);
 addr_reader!(trampoline, trampoline);
+addr_reader!(uservec, uservec);
+addr_reader!(userret, userret);
 
 pub type PageTable = rv64::vm::PageTable<rv64::vm::Sv39>;
 

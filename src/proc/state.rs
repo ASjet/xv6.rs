@@ -511,4 +511,5 @@ pub fn scheduler() -> ! {
 
 fn fork_ret() {
     // TODO: once.Do(fsinit)
+    arch::trap::user_trap_ret();
 }
