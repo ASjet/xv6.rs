@@ -31,6 +31,7 @@ pub fn alloc_pid() -> Pid {
 static mut _PROC_MEM: [usize; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()] =
     [0; size_of::<[Proc; crate::NPROC]>() / size_of::<usize>()];
 pub static mut PROCS: *mut [Proc; crate::NPROC] = core::ptr::null_mut();
+pub static mut INIT_PROC: *mut Proc = core::ptr::null_mut();
 
 pub fn kstack_addrs() -> [usize; crate::NPROC] {
     core::array::from_fn(arch::def::kstack)
@@ -347,7 +348,14 @@ impl Proc {
     /// Pass p's abandoned children to init.
     /// Caller must hold wait_lock.
     pub fn reparent(&mut self) {
-        todo!()
+        unsafe {
+            (*PROCS).iter_mut().for_each(|p| {
+                if p.parent == self {
+                    p.parent = INIT_PROC;
+                    wake_up(); // TODO: wake up INIT_PROC
+                }
+            });
+        }
     }
 
     /// Exit the current process.  Does not return.
