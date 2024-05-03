@@ -94,6 +94,8 @@ macro_rules! mv_reg_rw {
         #[derive(Debug, Clone, Copy)]
         pub struct $val(usize);
 
+        impl crate::BitFlagOps for $val {}
+
         impl From<$val> for usize {
             #[inline]
             fn from(v: $val) -> usize {
@@ -168,6 +170,8 @@ macro_rules! mv_reg_ro {
         #[derive(Debug, Clone, Copy)]
         pub struct $val(usize);
 
+        impl crate::BitFlagOps for $val {}
+
         impl From<$val> for usize {
             #[inline]
             fn from(v: $val) -> usize {
@@ -240,6 +244,8 @@ macro_rules! csr_reg_rw {
         #[repr(transparent)]
         #[derive(Debug, Clone, Copy)]
         pub struct $val(usize);
+
+        impl crate::BitFlagOps for $val {}
 
         impl From<$val> for usize {
             #[inline]
@@ -314,6 +320,8 @@ macro_rules! csr_reg_ro {
         #[repr(transparent)]
         #[derive(Debug, Clone, Copy)]
         pub struct $val(usize);
+
+        impl crate::BitFlagOps for $val {}
 
         impl From<$val> for usize {
             #[inline]
