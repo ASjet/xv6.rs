@@ -1,11 +1,14 @@
-use super::{switch::Context, Proc};
-use crate::arch;
+use core::ptr::addr_of;
+
+use super::{state, switch::Context, Proc};
+use crate::{arch, spinlock};
 
 extern "C" {
     fn switch(save: *const Context, load: *const Context);
 }
 
 pub static mut CPUS: [CPU; crate::NCPU] = [CPU::new(); crate::NCPU];
+pub static mut TICKS: spinlock::Mutex<usize> = spinlock::Mutex::new(0, "time");
 
 /// Per-CPU state
 #[derive(Clone, Copy, Debug)]
@@ -111,5 +114,13 @@ impl Drop for InterruptLock {
         unsafe {
             (*CPU::this_mut()).pop_off();
         }
+    }
+}
+
+pub fn timer_interrupt() {
+    unsafe {
+        let mut ticks = TICKS.lock();
+        *ticks += 1;
+        state::Proc::wake_up(addr_of!(*ticks) as usize);
     }
 }

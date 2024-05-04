@@ -2,7 +2,7 @@
 
 use crate::arch::def;
 use crate::io::{BaseIO, ScratchIO};
-use crate::{arch, println};
+use crate::{arch, println, proc};
 use rv64::reg::{self, RegisterRW};
 
 const PLIC_BASE: BaseIO<u32> = BaseIO::new(def::PLIC as usize);
@@ -63,7 +63,7 @@ pub fn dev_intr() -> Source {
                 // Software interrupt from a machine-mode timer interrupt,
                 // forwarded by timervec in kernelvec.S.
                 if hart == 0 {
-                    // TODO: clockintr();
+                    proc::timer_interrupt();
                 }
 
                 // Acknowledge the software interrupt by clearing
