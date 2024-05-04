@@ -138,6 +138,14 @@ impl Proc {
         self.kstack
     }
 
+    pub fn killed(&self) -> bool {
+        self.sync.lock().killed
+    }
+
+    pub fn set_killed(&self, killed: bool) {
+        self.sync.lock().killed = killed;
+    }
+
     pub fn cas_state(&self, old: State, new: State) -> bool {
         let mut sync = self.sync.lock();
         if sync.state == old {
