@@ -168,7 +168,7 @@ global_asm!(
 
 #[no_mangle]
 extern "C" fn kernel_trap() {
-    let sepc = reg::sepc.read();
+    let sepc_v = reg::sepc.read();
     let sstatus_v = reg::sstatus.read();
 
     assert!(
@@ -191,10 +191,10 @@ extern "C" fn kernel_trap() {
             // give up the CPU if this is a timer interrupt.
             if arch::cpuid() != 0 {
                 unsafe {
-                    if let Some(run) = CPU::this_proc() {
-                        let run = run.as_mut().unwrap_unchecked();
-                        if run.state() == State::Running {
-                            run.r#yield();
+                    if let Some(p) = CPU::this_proc() {
+                        let p = p.as_mut().unwrap_unchecked();
+                        if p.state() == State::Running {
+                            p.r#yield();
                         }
                     }
                 }
@@ -205,7 +205,7 @@ extern "C" fn kernel_trap() {
         }
     }
     unsafe {
-        reg::sepc.write(sepc);
+        reg::sepc.write(sepc_v);
         reg::sstatus.write(sstatus_v);
     }
 }
