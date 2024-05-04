@@ -1,4 +1,4 @@
-use core::ptr::addr_of;
+use core::ptr::{addr_of, NonNull};
 
 use super::{state, switch::Context, Proc};
 use crate::{arch, spinlock};
@@ -14,7 +14,7 @@ pub static mut TICKS: spinlock::Mutex<usize> = spinlock::Mutex::new(0, "time");
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct CPU {
-    proc: Option<*mut Proc>,
+    proc: Option<NonNull<Proc>>, // Guarantee: `proc` is either `None` or `Some(valid_pointer)`
     context: Context,
     noff: i32,
     interrupt_enabled: bool,
@@ -46,20 +46,33 @@ impl CPU {
 
     #[inline]
     /// Currently running process on this CPU
-    pub unsafe fn this_proc() -> Option<*mut Proc> {
+    pub fn this_proc() -> Option<NonNull<Proc>> {
+        unsafe {
+            let _guard = CPU::push_off();
+            CPUS[arch::cpuid()].proc
+        }
+    }
+
+    #[inline]
+    /// Currently running process on this CPU
+    /// Safety: Caller must ensure that there is a process running on this CPU
+    pub unsafe fn this_proc_ref() -> &'static mut Proc {
         let _guard = CPU::push_off();
-        (*CPU::this_mut()).proc
+        CPUS[arch::cpuid()]
+            .proc
+            .expect("no process on this cpu")
+            .as_mut()
     }
 
     #[inline]
     pub unsafe fn push_off() -> InterruptLock {
         let int_enabled = arch::is_intr_on();
         arch::intr_off();
-        let c = CPU::this_mut();
-        if (*c).noff == 0 {
-            (*c).interrupt_enabled = int_enabled;
+        let cpu = &mut CPUS[arch::cpuid()];
+        if cpu.noff == 0 {
+            cpu.interrupt_enabled = int_enabled;
         }
-        (*c).noff += 1;
+        cpu.noff += 1;
         InterruptLock
     }
 
@@ -86,7 +99,7 @@ impl CPU {
     }
 
     #[inline]
-    pub fn set_proc(&mut self, p: Option<*mut Proc>) {
+    pub fn set_proc(&mut self, p: Option<NonNull<Proc>>) {
         self.proc = p;
     }
 
