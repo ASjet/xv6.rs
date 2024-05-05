@@ -1,7 +1,7 @@
 use super::def::{TRAMPOLINE, TRAP_FRAME};
 use super::{def, interrupt, intr_off, vm};
-use crate::arch;
 use crate::proc::{State, CPU};
+use crate::{arch, println};
 use core::{arch::global_asm, panic};
 use rv64::reg::{self, RegisterRO, RegisterRW};
 use rv64::BitFlagOps;
@@ -210,8 +210,75 @@ extern "C" fn kernel_trap() {
     }
 }
 
+/// handle an interrupt, exception, or system call from user space.
+/// called from trampoline.S
 extern "C" fn user_trap() {
-    todo!()
+    extern "C" {
+        fn kernelvec();
+    }
+
+    assert_eq!(
+        reg::sstatus.read().spp(),
+        rv64::PrivilegeLevel::U,
+        "user_trap: not from user mode"
+    );
+
+    let mut which_dev = interrupt::Source::Unknown(0.into());
+
+    unsafe {
+        // send interrupts and exceptions to kerneltrap(),
+        // since we're now in the kernel.
+        reg::stvec.write((kernelvec as usize).into());
+
+        let p = &mut *CPU::this_proc().unwrap();
+        let trapframe = &mut *p.trapframe();
+        trapframe.epc = reg::sepc.read();
+
+        match reg::scause.read().into() {
+            // system call
+            8 => {
+                if p.killed() {
+                    p.exit(-1);
+                }
+
+                // sepc points to the ecall instruction,
+                // but we want to return to the next instruction.
+                trapframe.epc += 4;
+
+                // an interrupt will change sstatus &c registers,
+                // so don't enable until done with those registers.
+                arch::intr_on();
+
+                // TODO: syscall()
+            }
+            scause_v => {
+                which_dev = interrupt::dev_intr();
+                if let interrupt::Source::Unknown(_) = which_dev {
+                    println!(
+                        "user_trap: unexpected scause={:x?}, pid={}",
+                        scause_v,
+                        p.pid().unwrap()
+                    );
+                    println!(
+                        "           spec={:x?}, stval={:x?}",
+                        reg::sepc.read(),
+                        reg::stval.read(),
+                    );
+                    p.set_killed(true);
+                }
+            }
+        }
+
+        if p.killed() {
+            p.exit(-1);
+        }
+
+        // give up the CPU if this is a timer interrupt.
+        if let interrupt::Source::Timer = which_dev {
+            p.r#yield();
+        }
+    };
+    user_trap_ret();
 }
 
 /// Return to user space
