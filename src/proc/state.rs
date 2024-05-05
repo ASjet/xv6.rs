@@ -11,7 +11,7 @@ use crate::{
 use core::{
     mem::size_of,
     ops::{Add, Sub},
-    ptr::addr_of_mut,
+    ptr::{addr_of, addr_of_mut, NonNull},
 };
 use rv64::vm::PteFlags;
 
@@ -76,7 +76,7 @@ pub struct Proc {
     /// States that need to sync to all threads
     sync: Mutex<_ProcSync>,
     /// NOTE: `GLOBAL_LOCK` must be held when using these
-    parent: *mut Proc,
+    parent: Option<NonNull<Proc>>,
 
     // these are private to the process, so no synchronization is needed
     /// Process name
@@ -88,7 +88,7 @@ pub struct Proc {
     /// User page table
     pagetable: UserPageTable,
     /// Data for trampoline
-    trapframe: *mut arch::trampoline::TrapFrame,
+    trapframe: Option<NonNull<arch::trampoline::TrapFrame>>,
     /// swtch() here to run process
     context: switch::Context,
     // TODO: array[NOFILE] of opened file descriptors
@@ -108,12 +108,12 @@ impl Proc {
                 },
                 "proc_sync",
             ),
-            parent: core::ptr::null_mut(),
+            parent: None,
             name: [0; 16],
             kstack,
             size: 0,
             pagetable: UserPageTable::null(),
-            trapframe: core::ptr::null_mut(),
+            trapframe: None,
             context: switch::Context::new(),
         }
     }
@@ -126,7 +126,7 @@ impl Proc {
         self.sync.lock().state
     }
 
-    pub fn trapframe(&self) -> *mut arch::trampoline::TrapFrame {
+    pub fn trapframe(&self) -> Option<NonNull<arch::trampoline::TrapFrame>> {
         self.trapframe
     }
 
@@ -199,12 +199,9 @@ impl Proc {
 
         p.sync.lock().pid = Some(alloc_pid());
 
-        p.trapframe = alloc::kalloc(false)
-            .or_else(|| {
-                p.free();
-                None
-            })?
-            .as_mut_ptr::<arch::trampoline::TrapFrame>();
+        p.trapframe = NonNull::new(
+            alloc::kalloc(false).map(|ptr| ptr.as_mut_ptr::<arch::trampoline::TrapFrame>())?,
+        );
 
         p.pagetable = pagetable.or(p.alloc_pagetable().or_else(|| {
             p.free();
@@ -220,18 +217,18 @@ impl Proc {
     /// including user pages.
     /// p->lock must be held.(FIXME: Is holding lock necessary?)
     pub fn free(&mut self) {
-        if !self.trapframe.is_null() {
+        if let Some(trapframe) = self.trapframe {
             unsafe {
-                alloc::kfree(self.trapframe);
+                alloc::kfree(trapframe.as_ptr());
             }
-            self.trapframe = core::ptr::null_mut();
+            self.trapframe = None;
         }
         if !self.pagetable.is_null() {
             self.free_pagetable();
             self.pagetable = UserPageTable::null();
         }
         self.size = 0;
-        self.parent = core::ptr::null_mut();
+        self.parent = None;
         self.name = [0; 16];
 
         let mut sync = self.sync.lock();
@@ -245,6 +242,12 @@ impl Proc {
     /// Create a user page table for a given process,
     /// with no user memory, but with trampoline pages.
     fn alloc_pagetable(&self) -> Option<UserPageTable> {
+        // If trapframe is not set, we cannot proceed.
+        let trapframe = self
+            .trapframe
+            .expect("alloc_pagetable: trapframe is not set")
+            .as_ptr() as usize;
+
         // An empty page table.
         let mut pagetable = UserPageTable::new()?;
 
@@ -272,7 +275,7 @@ impl Proc {
                 .map(
                     def::TRAP_FRAME,
                     PG_SIZE,
-                    self.trapframe as usize,
+                    trapframe,
                     PteFlags::new().set_readable(true).set_writable(true),
                 )
                 .ok()
@@ -333,22 +336,32 @@ impl Proc {
         }?;
 
         // Allocate process.
-        let np = Proc::alloc(Some(new_pgtbl)).ok_or(ForkError::AllocFailed)?;
-        let np_ref = unsafe { np.as_mut().unwrap_unchecked() };
+        let child_ptr = Proc::alloc(Some(new_pgtbl)).ok_or(ForkError::AllocFailed)?;
+        let child = unsafe { child_ptr.as_mut().unwrap_unchecked() };
 
-        np_ref.size = self.size;
-        np_ref.name = self.name.clone();
+        child.size = self.size;
+        child.name = self.name.clone();
 
         unsafe {
             // copy saved user registers.
-            *np_ref.trapframe = *self.trapframe;
+            let trapframe = self
+                .trapframe
+                .expect("fork: no trapframe in parent")
+                .as_mut();
+            let child_trapframe = child
+                .trapframe
+                .expect("fork: no trapframe in child")
+                .as_mut();
+
+            *child_trapframe = *trapframe;
 
             // Cause fork to return 0 in the child.
-            (*np_ref.trapframe).a0 = 0;
+            child_trapframe.a0 = 0;
 
             {
                 let _guard = GLOBAL_LOCK.lock();
-                np_ref.parent = CPU::this_proc().unwrap();
+                let parent = NonNull::new_unchecked(addr_of!(*self) as *mut Proc);
+                child.parent = Some(parent);
             }
         }
 
@@ -356,7 +369,7 @@ impl Proc {
         // TODO: copy file descriptor
 
         let pid = {
-            let mut sync = np_ref.sync.lock();
+            let mut sync = child.sync.lock();
             sync.state = State::Runnable;
             sync.pid
         }
@@ -370,9 +383,11 @@ impl Proc {
     pub fn reparent(&mut self) {
         unsafe {
             (*PROCS).iter_mut().for_each(|p| {
-                if p.parent == self {
-                    p.parent = INIT_PROC;
-                    Self::wake_up(INIT_PROC as usize); // TODO: wake up INIT_PROC
+                if let Some(parent) = p.parent {
+                    if parent.as_ptr() == self {
+                        p.parent = Some(NonNull::new_unchecked(INIT_PROC));
+                        Self::wake_up(INIT_PROC as usize);
+                    }
                 }
             });
         }
@@ -395,7 +410,7 @@ impl Proc {
             self.reparent();
 
             // Parent might be sleeping in wait().
-            Self::wake_up(self.parent as usize);
+            Self::wake_up(self.parent.unwrap().as_ptr() as usize);
 
             {
                 let mut sync = self.sync.lock();
@@ -451,7 +466,7 @@ impl Proc {
         unsafe {
             (*PROCS).iter_mut().for_each(|p| {
                 if let Some(this_proc) = CPU::this_proc() {
-                    if this_proc != p {
+                    if this_proc.as_ptr() != p {
                         let mut sync = p.sync.lock();
                         if sync.state == State::Sleeping && sync.chan == chan {
                             sync.state = State::Runnable;
@@ -488,6 +503,7 @@ impl Proc {
 ///  - eventually that process transfers control
 ///    via swtch back to the scheduler.
 pub fn scheduler() -> ! {
+    // Use pointer here to avoid multiple mutable references from existing
     let c = unsafe { cpu::CPU::this_mut() };
     loop {
         // Avoid deadlock by ensuring that devices can interrupt.
@@ -499,7 +515,7 @@ pub fn scheduler() -> ! {
                 .filter(|p| p.cas_state(State::Runnable, State::Running))
                 .for_each(|run| {
                     // Switch to chosen process
-                    (*c).set_proc(Some(run));
+                    (*c).set_proc(Some(NonNull::new_unchecked(run)));
 
                     // It is the process's job to release its lock and then
                     // reacquire it before jumping back to us.

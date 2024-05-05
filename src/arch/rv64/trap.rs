@@ -168,7 +168,7 @@ global_asm!(
 
 #[no_mangle]
 extern "C" fn kernel_trap() {
-    let sepc = reg::sepc.read();
+    let sepc_v = reg::sepc.read();
     let sstatus_v = reg::sstatus.read();
 
     assert!(
@@ -191,10 +191,10 @@ extern "C" fn kernel_trap() {
             // give up the CPU if this is a timer interrupt.
             if arch::cpuid() != 0 {
                 unsafe {
-                    if let Some(run) = CPU::this_proc() {
-                        let run = run.as_mut().unwrap_unchecked();
-                        if run.state() == State::Running {
-                            run.r#yield();
+                    if let Some(mut p) = CPU::this_proc() {
+                        let p = p.as_mut();
+                        if p.state() == State::Running {
+                            p.r#yield();
                         }
                     }
                 }
@@ -205,7 +205,7 @@ extern "C" fn kernel_trap() {
         }
     }
     unsafe {
-        reg::sepc.write(sepc);
+        reg::sepc.write(sepc_v);
         reg::sstatus.write(sstatus_v);
     }
 }
@@ -230,8 +230,8 @@ extern "C" fn user_trap() {
         // since we're now in the kernel.
         reg::stvec.write((kernelvec as usize).into());
 
-        let p = &mut *CPU::this_proc().unwrap();
-        let trapframe = &mut *p.trapframe();
+        let p = CPU::this_proc_ref();
+        let trapframe = p.trapframe().unwrap_unchecked().as_mut();
         trapframe.epc = reg::sepc.read();
 
         match reg::scause.read().into() {
@@ -284,8 +284,6 @@ extern "C" fn user_trap() {
 /// Return to user space
 #[no_mangle]
 pub extern "C" fn user_trap_ret() {
-    let p = unsafe { &mut *CPU::this_proc().unwrap() };
-
     // we're about to switch the destination of traps from
     // kerneltrap() to usertrap(), so turn off interrupts until
     // we're back in user space, where usertrap() is correct.
@@ -297,7 +295,8 @@ pub extern "C" fn user_trap_ret() {
 
         // set up trapframe values that uservec will need when
         // the process next re-enters the kernel.
-        let trapframe = &mut *p.trapframe();
+        let p = CPU::this_proc_ref();
+        let trapframe = p.trapframe().unwrap_unchecked().as_mut();
         trapframe.kernel_satp = reg::satp.read(); // kernel page table
         trapframe.kernel_sp = p.kstack(); // process's kernel stack
         trapframe.kernel_trap = user_trap as usize;
