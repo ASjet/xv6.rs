@@ -9,6 +9,7 @@ pub mod io;
 pub mod mem;
 pub mod print;
 pub mod proc;
+pub mod sleeplock;
 pub mod spinlock;
 
 /// Should be equal to _max_hart_id
